@@ -22,6 +22,15 @@ public readonly record struct ElementKey(
     long ElementId
 );
 
+public class StructuralLayer
+{
+    public int LayerIndex;
+    public MaterialFunctionAssignment Function;
+    public double Width;
+    public ElementId MaterialId;
+    public bool IsCore;
+}
+
 public class BimOpenSchemaRevitBuilder
 {
     public BimOpenSchemaRevitBuilder(Document rootDocument, bool includeLinks, bool processDoc = true) 
@@ -32,15 +41,7 @@ public class BimOpenSchemaRevitBuilder
             ProcessDocument(rootDocument);
     }
 
-    public class StructuralLayer
-    {
-        public int LayerIndex;
-        public MaterialFunctionAssignment Function;
-        public double Width;
-        public ElementId MaterialId;
-        public bool IsCore;
-    }
-
+    public const EntityIndex InvalidEntity = (EntityIndex)(-1);
     public BimDataBuilder Builder = new();
     public bool IncludeLinks;
     public Document CurrentDocument;
@@ -228,17 +229,24 @@ public class BimOpenSchemaRevitBuilder
         Builder.AddParameter(ei, val, di);
     }
 
-    public void AddTypeAsParameter(EntityIndex ei, object o)
-        => AddTypeAsParameter(ei, o.GetType().Name);
+    public void AddDotNetTypeAsParameter(EntityIndex ei, object o)
+        => AddDotNetTypeAsParameter(ei, o.GetType().Name);
 
-    public void AddTypeAsParameter(EntityIndex ei, string typeName)
+    public void AddDotNetTypeAsParameter(EntityIndex ei, string typeName)
         => AddParameter(ei, ObjectTypeName, typeName);
 
     public void AddErrorAsParameter(EntityIndex ei, Exception ex)
-        => AddParameter(ei, ObjectError, ex.Message);
+    {
+        // TODO: this has to become a diagnostic. 
+        // NOTE: I also want to count these. 
+        throw new NotImplementedException("TODO: replace with something better");
+    }
 
     public EntityIndex ProcessCategory(Category category)
     {
+        if (category == null || !category.IsValid)
+            return InvalidEntity;
+
         if (!ProcessedCategories.TryGetValue(category.Id.Value, out var result))
             return result;
 
@@ -247,11 +255,12 @@ public class BimOpenSchemaRevitBuilder
             category.Id.ToString(), 
             CurrentDocumentIndex, 
             category.Name,
-            category.BuiltInCategory.ToString());
+            InvalidEntity,
+            InvalidEntity);
 
         try
         {
-            AddTypeAsParameter(r, category);
+            AddDotNetTypeAsParameter(r, category);
             AddParameter(r, CategoryCategoryType, category.CategoryType.ToString());
             AddParameter(r, CategoryBuiltInType, category.BuiltInCategory.ToString());
 
@@ -278,11 +287,12 @@ public class BimOpenSchemaRevitBuilder
         {
             var index = layer.LayerIndex;
             var layerEi = Builder.AddEntity(
-                0, 
+                -1, 
                 $"{host.UniqueId}${index}", 
                 CurrentDocumentIndex, 
                 $"{host.Name}[{index}]", 
-                layer.Function.ToString());
+                InvalidEntity,
+                InvalidEntity);
 
             AddParameter(layerEi, LayerIndex, index);
             AddParameter(layerEi, LayerFunction, layer.Function.ToString());
@@ -290,7 +300,7 @@ public class BimOpenSchemaRevitBuilder
             AddParameter(layerEi, LayerIsCore, layer.IsCore);
             AddParameter(layerEi, LayerMaterialId, layer.MaterialId, RelationType.HasMaterial);
 
-            AddTypeAsParameter(layerEi, layer);
+            AddDotNetTypeAsParameter(layerEi, layer);
             Builder.AddRelation(ei, layerEi, RelationType.HasLayer);
         }
     }
@@ -326,7 +336,6 @@ public class BimOpenSchemaRevitBuilder
 
     public void ProcessFamilyInstance(EntityIndex ei, FamilyInstance f)
     {
-        AddParameter(ei, FIFamilyType, f.GetTypeId(), RelationType.InstanceOf);
         AddParameter(ei, FIToRoom, f.ToRoom);
         AddParameter(ei, FIFromRoom, f.FromRoom);
         AddParameter(ei, FIHost, f.Host, RelationType.HostedBy);
@@ -363,7 +372,8 @@ public class BimOpenSchemaRevitBuilder
             "",
             CurrentDocumentIndex,
             name,
-            BoundaryEntityName);
+            InvalidEntity,
+            InvalidEntity);
 
         AddParameter(newEi, BoundaryOuter, isOuterBoundary);
         AddParameter(newEi, BoundaryElement, boundaryElementEntityIndex);
@@ -447,8 +457,8 @@ public class BimOpenSchemaRevitBuilder
     
     public EntityIndex ProcessElement(ElementId id)
     {
-        if (id == null || id == ElementId.InvalidElementId)
-            return (EntityIndex)(-1);
+        if (id == ElementId.InvalidElementId)
+            return InvalidEntity;
 
         var key = GetElementKey(CurrentDocumentKey, id.Value);
         if (ProcessedEntities.TryGetValue(key, out var found))
@@ -546,19 +556,13 @@ public class BimOpenSchemaRevitBuilder
     public EntityIndex ProcessNewElement(ElementKey key, Element e)
     {
         var category = e.Category;
-        var catName = (category != null && category.IsValid) ? category.Name : "";
+        var catIndex = ProcessCategory(category);
+        var typeIndex = ProcessElement(e.GetTypeId());
 
-        var ei = Builder.AddEntity(e.Id.Value, e.UniqueId, CurrentDocumentIndex, e.Name, catName);
+        var ei = Builder.AddEntity(e.Id.Value, e.UniqueId, CurrentDocumentIndex, e.Name, catIndex, typeIndex);
         ProcessedEntities.Add(key, ei);
 
-        AddTypeAsParameter(ei, e);
-
-        if (category != null && category.IsValid)
-        {
-            var catIndex = ProcessCategory(category);
-            AddParameter(ei, ObjectCategory, catIndex);
-            Builder.AddRelation(ei, catIndex, RelationType.MemberOf);
-        }
+        AddDotNetTypeAsParameter(ei, e);
 
         ProcessParameters(ei, e);
         ProcessMaterials(ei, e);
@@ -881,10 +885,10 @@ public class BimOpenSchemaRevitBuilder
 
         // NOTE: this creates a pseudo-entity for the document, which is used so that we can associate parameters and meta-data with it. 
         var ei = Builder.AddEntity(ProcessedDocuments.Count, CurrentDocument.CreationGUID.ToString(),
-            CurrentDocumentIndex, d.Title, DocumentEntityName);
+            CurrentDocumentIndex, d.Title, InvalidEntity, InvalidEntity);
         ProcessedDocuments.Add(key, CurrentDocumentIndex);
 
-        AddTypeAsParameter(ei, d);
+        AddDotNetTypeAsParameter(ei, d);
 
         var siteLocation = CurrentDocument.SiteLocation;
             
@@ -952,8 +956,8 @@ public class BimOpenSchemaRevitBuilder
     public EntityIndex ProcessConnector(Connector conn)
     {
         // LocalId = conn.Id (int), GlobalId = empty, Name = empty, Category = "Connector"
-        var entityIndex = Builder.AddEntity(conn.Id, "", CurrentDocumentIndex, "", ConnectorEntityName);
-        AddTypeAsParameter(entityIndex, conn);
+        var entityIndex = Builder.AddEntity(conn.Id, "", CurrentDocumentIndex, "", InvalidEntity, InvalidEntity);
+        AddDotNetTypeAsParameter(entityIndex, conn);
 
         try
         {

@@ -20,17 +20,12 @@ public class FilterCategory : IModelModifier
             return;
         }
 
-        _categoryIndices = bim
+        CategoryNames = bim
             .ObjectModel
             .Entities
             .Where(e => e.HasGeometry)
-            .Select(e => e.Entity.Category)
+            .Select(e => e.Category)
             .Distinct()
-            .OrderBy(bim.ObjectModel.Data.Get)
-            .ToList();
-
-        CategoryNames = _categoryIndices
-            .Select(bim.ObjectModel.Data.Get)
             .ToList();
     }
 
@@ -51,9 +46,8 @@ public class FilterCategory : IModelModifier
         if (model3D is not BimModel3D bim)
             return model3D;
 
-        var entities = bim.ObjectModel.Data.Entities;
-        var catIndex = _categoryIndices[Category];
-        return model3D.Where(inst => entities[inst.EntityIndex].Category == catIndex);
+        var entities = bim.ObjectModel.Entities;
+        return model3D.Where(inst => entities[inst.EntityIndex].Category == CategoryName);
 
     }
 }

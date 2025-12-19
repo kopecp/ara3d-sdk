@@ -8,10 +8,13 @@ namespace Ara3D.Bowerbird.RevitSamples;
 
 public static class DocumentUtils
 {
-    public static IEnumerable<Document> GetLinkedDocuments(this Document doc)
+    public static IEnumerable<RevitLinkInstance> GetLinks(this Document doc)
         => new FilteredElementCollector(doc)
             .OfClass(typeof(RevitLinkInstance))
-            .Cast<RevitLinkInstance>()
+            .Cast<RevitLinkInstance>();
+
+    public static IEnumerable<Document> GetLinkedDocuments(this Document doc)
+        => doc.GetLinks()
             .Select(li => li.GetLinkDocument())
             .WhereNotNull();
 

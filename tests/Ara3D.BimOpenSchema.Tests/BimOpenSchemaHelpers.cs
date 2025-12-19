@@ -10,7 +10,6 @@ public static class BIMOpenSchemaHelpers
             { "IfcRelDecomposes", RelationType.PartOf },
             { "IfcRelNests", RelationType.ChildOf },
             { "IfcRelContainedInSpatialStructure", RelationType.ContainedIn },
-            { "IfcRelDefinesByType", RelationType.InstanceOf },
             { "IfcRelVoidsElement", RelationType.HostedBy },
             { "IfcRelConnectsPortToPort", RelationType.ConnectsTo },
             { "IfcRelConnectsElements", RelationType.ConnectsTo },

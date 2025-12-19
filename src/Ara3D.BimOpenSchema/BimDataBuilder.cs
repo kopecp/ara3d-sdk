@@ -6,6 +6,8 @@ namespace Ara3D.BimOpenSchema;
 // This is a helper class for incrementally constructing a BIMData object without repeating objects. 
 public class BimDataBuilder : IBimData
 {
+    public Manifest Manifest { get; set; }
+
     private readonly Dictionary<Entity, int> _entityLookup = new();
     private readonly Dictionary<Document, int> _documentLookup = new();
     private readonly Dictionary<Point, int> _pointLookup = new();
@@ -23,6 +25,7 @@ public class BimDataBuilder : IBimData
     private readonly List<string> _strings = [];
     private readonly List<Point> _points = [];
     private readonly List<EntityRelation> _relations = [];
+    private readonly List<Diagnostic> _diagnostics = [];
 
     public IReadOnlyList<ParameterDescriptor> Descriptors => _descriptors;
     public IReadOnlyList<ParameterInt> IntegerParameters => _integerParameters;
@@ -35,6 +38,7 @@ public class BimDataBuilder : IBimData
     public IReadOnlyList<string> Strings => _strings;
     public IReadOnlyList<Point> Points => _points;
     public IReadOnlyList<EntityRelation> Relations => _relations;
+    public IReadOnlyList<Diagnostic> Diagnostics => _diagnostics;
 
     public BimGeometry Geometry { get; set; }
 
@@ -55,8 +59,8 @@ public class BimDataBuilder : IBimData
     public void AddRelation(EntityIndex a, EntityIndex b, RelationType rt)
         => _relations.Add(new(a, b, rt));
 
-    public EntityIndex AddEntity(long localId, string globalId, DocumentIndex d, string name, string category)
-        => (EntityIndex)Add(_entityLookup, _entities, new(localId, AddString(globalId), d, AddString(name), AddString(category)));
+    public EntityIndex AddEntity(long localId, string globalId, DocumentIndex d, string name, EntityIndex category, EntityIndex type)
+        => (EntityIndex)Add(_entityLookup, _entities, new(localId, AddString(globalId), d, AddString(name), category, type));
 
     public DocumentIndex AddDocument(string title, string pathName)
         => (DocumentIndex)Add(_documentLookup, _documents, new(AddString(title), AddString(pathName)));

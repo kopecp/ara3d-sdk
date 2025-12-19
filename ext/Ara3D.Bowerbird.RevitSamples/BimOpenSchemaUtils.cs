@@ -90,7 +90,7 @@ namespace Ara3D.Bowerbird.RevitSamples
                 : new Options()
                 {
                     ComputeReferences = true,
-                    DetailLevel = ViewDetailLevel.Fine,
+                    DetailLevel = (ViewDetailLevel)settings.DetailLevel,
                 };
 
 
@@ -99,7 +99,7 @@ namespace Ara3D.Bowerbird.RevitSamples
             var dataSet = bimData.ToDataSet();
 
             var inputFile = new FilePath(currentDoc.PathName);
-            var fp = inputFile.ChangeDirectoryAndExt(settings.Folder, settings.FileExtension);
+            var fp = inputFile.ChangeDirectoryAndExt(settings.Folder, "bos");
 
             logger.Log($"Creating FileStream");
             var fs = new FileStream(fp, FileMode.Create, FileAccess.Write, FileShare.None);

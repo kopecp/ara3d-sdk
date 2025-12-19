@@ -4,9 +4,9 @@ using Ara3D.Logging;
 
 namespace Ara3D.Bowerbird.RevitSamples;
 
-public class CommandForegroundExportBos : NamedCommand
+public class CommandBimOpenSchemaExportForeground : NamedCommand
 {
-    public override string Name => "BOM Export";
+    public override string Name => "BIM Open Schema Exporter";
 
     public BimOpenSchemaExportSettings GetExportSettings()
         => new()
@@ -26,4 +26,4 @@ public class CommandForegroundExportBos : NamedCommand
         doc?.ExportBimOpenSchema(GetExportSettings(), logger);
         TextDisplayForm.DisplayText(sb.ToString());
     }
-}   
+}

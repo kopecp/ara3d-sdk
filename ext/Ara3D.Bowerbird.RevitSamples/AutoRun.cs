@@ -22,8 +22,6 @@ namespace Ara3D.Bowerbird.RevitSamples
             Process.GetCurrentProcess().Kill();
         }
 
-       
-
         public static void ExportCurrentViewToPng(Document doc, Utils.FilePath filePath)
         {
             var img = new ImageExportOptions();

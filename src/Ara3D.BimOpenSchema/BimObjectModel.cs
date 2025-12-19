@@ -122,13 +122,16 @@ namespace Ara3D.BimOpenSchema
         public DocumentModel Document => Model.Documents[(int)Entity.Document];
         public string DocumentTitle => Document.Title;
         public long LocalId => Entity.LocalId;
-        public StringIndex GlobalId => Entity.GlobalId;
-        public string Category => Data.Get(Entity.Category);
+        public string GlobalId => Data.Get(Entity.GlobalId);
+        public string Category => GetEntityModel(Entity.Category)?.Name;
         public string Name => Data.Get(Entity.Name);
         public bool HasGeometry => Instances.Count > 0;
-        
+
+        public EntityModel GetEntityModel(EntityIndex ei)
+            => ei < 0 ? null : Model.Entities[(int)ei];
+
         // Commonly present data stored in parameters
-        public string CategoryType => GetParameterAsEntity(CommonRevitParameters.ObjectCategory)?.GetParameterAsString(CommonRevitParameters.CategoryBuiltInType);
+        public string CategoryType => GetEntityModel(Entity.Category)?.GetParameterAsString(CommonRevitParameters.CategoryBuiltInType);
         public string ClassName => GetParameterAsString(CommonRevitParameters.ObjectTypeName);
         public string LevelName => GetParameterAsEntity(CommonRevitParameters.ElementLevel)?.Name;
         public string GroupName => GetParameterAsEntity(CommonRevitParameters.ElementGroup)?.Name;

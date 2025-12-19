@@ -13,14 +13,13 @@ public static class CommonRevitParameters
     public const string DocumentEntityName = "__DOCUMENT__";
     public const string BoundaryEntityName = "__BOUNDARY__";
     public const string ConnectorEntityName = "__CONNECTOR__";
+    public const string CategoryEntityName = "__CATEGORY__";
 
     // =========================
     // Object
     // =========================
 
     public static Parameter ObjectTypeName = new("Bos:Object:TypeName", ParameterType.String);
-    public static Parameter ObjectError = new("Bos:Object:Error", ParameterType.String);
-    public static Parameter ObjectCategory = new("Bos:Object:Category", ParameterType.Entity);
     
     // =========================
     // Element

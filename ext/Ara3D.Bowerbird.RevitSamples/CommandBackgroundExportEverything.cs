@@ -22,10 +22,10 @@ public class CommandBackgroundExportEverything : NamedCommand
     public BosBackgroundExporterForm BosForm;
     public List<long> Ids = new();
     public int QueueSize;
-    public override string Name => "BOM Background Export";
+    public override string Name => "Background Export (test)";
     public BimOpenSchemaRevitBuilder RevitBuilder;
     public UIApplication UiApp;
-    public string Folder = @"C:\dev\aec-tech-linter\tmp\";
+    public string Folder = @"C:\tmp\";
     public int LastCount = 0;
     public List<long> DeletedIds = new List<long>();
     public bool Modified = false;

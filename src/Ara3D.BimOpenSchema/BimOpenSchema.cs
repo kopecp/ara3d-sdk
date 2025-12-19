@@ -26,6 +26,7 @@ namespace Ara3D.BimOpenSchema;
 /// </summary>
 public interface IBimData
 {
+    Manifest Manifest { get; }
     IReadOnlyList<ParameterDescriptor> Descriptors { get; } 
     IReadOnlyList<ParameterInt> IntegerParameters { get; } 
     IReadOnlyList<ParameterSingle> SingleParameters { get; } 
@@ -37,23 +38,18 @@ public interface IBimData
     IReadOnlyList<string> Strings { get; } 
     IReadOnlyList<Point> Points { get; } 
     IReadOnlyList<EntityRelation> Relations { get; }
+    IReadOnlyList<Diagnostic> Diagnostics { get; }
     BimGeometry Geometry { get; }
 }
 
-public class BimData : IBimData
+// Usually stored as a .JSON file in the BOS package. 
+public class Manifest
 {
-    public IReadOnlyList<ParameterDescriptor> Descriptors { get; set; } = [];
-    public IReadOnlyList<ParameterInt> IntegerParameters { get; set; } = [];
-    public IReadOnlyList<ParameterSingle> SingleParameters { get; set; } = [];
-    public IReadOnlyList<ParameterString> StringParameters { get; set; } = [];
-    public IReadOnlyList<ParameterEntity> EntityParameters { get; set; } = [];
-    public IReadOnlyList<ParameterPoint> PointParameters { get; set; } = [];
-    public IReadOnlyList<Document> Documents { get; set; } = [];
-    public IReadOnlyList<Entity> Entities { get; set; } = [];
-    public IReadOnlyList<string> Strings { get; set; } = [];
-    public IReadOnlyList<Point> Points { get; set; } = [];
-    public IReadOnlyList<EntityRelation> Relations { get; set; } = [];
-    public BimGeometry Geometry { get; set; }
+    public const string CurrentVersion = "0.1";
+    public string BimOpenSchemaVersion { get; set; } = CurrentVersion;
+    public string GeneratorApplication { get; set; }
+    public string GeneratorVersion { get; set; }
+    public object ExportOptions { get; set; }
 }
 
 //==
@@ -92,7 +88,10 @@ public record struct Entity
     StringIndex Name,
 
     // The category of the entity
-    StringIndex Category
+    EntityIndex Category,
+    
+    // The "type" of the entity if it is an instance 
+    EntityIndex Type
 );
 
 /// <summary>
@@ -222,42 +221,57 @@ public enum RelationType
     // Represents spatial relationships. Like part of a level, or a room.  
     ContainedIn = 2,
 
-    // Used to express family instance to family type relationship  
-    InstanceOf = 3,
-
     // For parts or openings that occur within a host (such as windows or doorways). 
-    HostedBy = 4,
+    HostedBy = 3,
 
     // For parent-child relationships in a graph (e.g. sub-categories)
-    ChildOf = 5,
+    ChildOf = 4,
 
     // Represents relationship of compound structures and their constituents 
-    HasLayer = 6,
+    HasLayer = 5,
 
     // Represents different kinds of material relationships
-    HasMaterial = 7,
+    HasMaterial = 6,
 
     // Two-way connectivity relationship. Can assume that only one direction is stored in DB 
-    ConnectsTo = 8,
+    ConnectsTo = 7,
 
     // MEP networks and connection manager
-    HasConnector = 9,
+    HasConnector = 8,
     
     // For space <-> boundary relationships. 
-    BoundedBy = 10,
+    BoundedBy = 9,
 
     // Can traverse from one space to another (e.g., portal)
-    TraverseTo = 11, 
+    TraverseTo = 10, 
 
     // Relationship between openings (e.g., doorways, window frame) and hosts  
-    Voids = 12,
+    Voids = 11,
 
     // When an object like a door or window fills a void 
-    Fills = 13,
+    Fills = 12,
 
     // For finishes on walls/floors/ceilings
-    Covers = 14,
+    Covers = 13,
 
     // For MEP systems (e.g., HVAC) providing service to a zone
-    Serves = 15,
+    Serves = 14,
 }
+
+
+public enum DiagnosticType
+{
+    RevitWarning,
+    RevitError,
+    ExporterWarning,
+    ExporterError,
+    ExporterInfo
+}
+
+public record struct Diagnostic
+(
+    DiagnosticType Type,
+    DocumentIndex Document,
+    EntityIndex Entity,
+    StringIndex Message
+);

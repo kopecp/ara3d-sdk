@@ -91,7 +91,7 @@ public static class BimDataExtension
         => new((StringIndex)row[0], (StringIndex)row[1]);
 
     public static Entity ToEntity(IDataRow row)
-        => new((long)row[0], (StringIndex)row[1], (DocumentIndex)row[2], (StringIndex)row[3], (StringIndex)row[4]);
+        => new((long)row[0], (StringIndex)row[1], (DocumentIndex)row[2], (StringIndex)row[3], (EntityIndex)row[4], (EntityIndex)row[5]);
 
     public static BimData ToBimData(this IDataSet set)
     {
