@@ -25,7 +25,7 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
         var logger = Logger.Create(sb);
 
         logger.Log("Creating central document with elements");
-        var docWithElements = new DocumentElements(doc);
+        var docWithElements = new BosDocumentContext(doc);
 
         logger.Log("Gathering linked documents");
         var docs = docWithElements.GatherLinkedDocuments();
@@ -41,10 +41,6 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
             logger.Log($"Retrieving element IDs");
             d.RetrieveElementIds();
             logger.Log($"Found {d.ElementIds.Count} element ids");
-
-            logger.Log($"Retrieving used type IDs");
-            d.RetrieveUsedTypeIds();
-            logger.Log($"Found {d.TypeIds.Count} type ids");
         }
 
         TextDisplayForm.DisplayText(sb.ToString());

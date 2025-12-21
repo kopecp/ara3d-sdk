@@ -17,13 +17,14 @@ using FilePath = Ara3D.Utils.FilePath;
 
 namespace Ara3D.Bowerbird.RevitSamples;
 
+/*
 public class CommandBackgroundExportEverything : NamedCommand
 {
     public BosBackgroundExporterForm BosForm;
     public List<long> Ids = new();
     public int QueueSize;
     public override string Name => "Background Export (test)";
-    public BimOpenSchemaRevitBuilder RevitBuilder;
+    public BosDocumentBuilder RevitBuilder;
     public UIApplication UiApp;
     public string Folder = @"C:\tmp\";
     public int LastCount = 0;
@@ -99,7 +100,7 @@ public class CommandBackgroundExportEverything : NamedCommand
             var elapsed = DateTimeOffset.Now - LastSave;
             if (elapsed.TotalSeconds < UpdateFrequency) return;
 
-            var bimData = RevitBuilder.Builder;
+            var bimData = RevitBuilder.DataBuilder;
             var dataSet = bimData.ToDataSet();
 
             var fp = new FilePath($@"C:\dev\aec-tech-linter\tmp\changes-{PathUtil.GetTimeStamp()}.parquet.zip");
@@ -141,4 +142,4 @@ public class CommandBackgroundExportEverything : NamedCommand
 
     public Document Doc;
     public BackgroundProcessor<long> Processor;
-}
+}*/

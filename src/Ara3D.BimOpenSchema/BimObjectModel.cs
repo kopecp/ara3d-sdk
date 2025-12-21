@@ -8,7 +8,6 @@ namespace Ara3D.BimOpenSchema
     /// <summary>
     /// The object model is a convenient and denormalized representation of the data as objects.
     /// It is not canonical and is designed for common programming tasks.
-    /// TODO: optimize, it takes a lot of memory. 
     /// </summary>
     public class BimObjectModel
     {

@@ -8,12 +8,29 @@ namespace Ara3D.BimOpenSchema;
 
 public static class BimDataExtension
 {
-    public static string Get(this IBimData self, StringIndex index) => self.Strings[(int)index];
-    public static Entity Get(this IBimData self, EntityIndex index) => self.Entities[(int)index];
-    public static Document Get(this IBimData self, DocumentIndex index) => self.Documents[(int)index];
-    public static Point Get(this IBimData self, PointIndex index) => self.Points[(int)index];
-    public static EntityRelation Get(this IBimData self, RelationIndex index) => self.Relations[(int)index];
-    public static ParameterDescriptor Get(this IBimData self, DescriptorIndex index) => self.Descriptors[(int)index];
+    public static string Get(this IBimData self, StringIndex index) 
+        => self.Strings[(int)index];
+
+    public static Entity Get(this IBimData self, EntityIndex index) 
+        => self.Entities[(int)index];
+
+    public static Document Get(this IBimData self, DocumentIndex index) 
+        => self.Documents[(int)index];
+
+    public static Point Get(this IBimData self, PointIndex index) 
+        => self.Points[(int)index];
+
+    public static EntityRelation Get(this IBimData self, RelationIndex index) 
+        => self.Relations[(int)index];
+
+    public static ParameterDescriptor Get(this IBimData self, DescriptorIndex index) 
+        => self.Descriptors[(int)index];
+
+    public static string GetEntityName(this IBimData self, EntityIndex index)
+        => index >= 0 ? self.Get(self.Get(index).Name) : "null";
+
+    public static string GetEntityLabel(this IBimData self, EntityIndex index)
+        => $"{self.GetEntityName(index)}[{index}]";
 
     public static IEnumerable<EntityIndex> EntityIndices(this IBimData self) 
         => Enumerable.Range(0, self.Entities.Count).Select(i => (EntityIndex)i);
@@ -32,6 +49,7 @@ public static class BimDataExtension
 
     public static IDataSet ToDataSet(this IBimData self)
         => new ReadOnlyDataSet([
+            self.Diagnostics.ToDataTable(nameof(self.Diagnostics)),
             self.Points.ToDataTable(nameof(self.Points)),
             self.Strings.ToDataTable(nameof(self.Strings)),
             self.Descriptors.ToDataTable(nameof(self.Descriptors)),
@@ -44,6 +62,13 @@ public static class BimDataExtension
             self.EntityParameters.ToDataTable(nameof(self.EntityParameters)),
             self.PointParameters.ToDataTable(nameof(self.PointParameters)),
         ]);
+
+    public static long GetNumParameters(this IBimData self)
+        => self.SingleParameters.Count
+           + self.IntegerParameters.Count
+           + self.StringParameters.Count
+           + self.EntityParameters.Count
+           + self.PointParameters.Count;
 
     public static List<T> ReadTable<T>(this IDataSet set, Func<IDataRow, T> f, string name)
     {
@@ -59,6 +84,9 @@ public static class BimDataExtension
             list.Add(f(row));
         return list;
     }
+
+    public static Diagnostic ToDiagnostic(IDataRow row)
+        => new((DiagnosticType)row[0], (DocumentIndex)row[1], (EntityIndex)row[2], (StringIndex)row[3]);
 
     public static Point ToPoint(IDataRow row)
         => new((float)row[0], (float)row[1], (float)row[2]);
@@ -96,6 +124,7 @@ public static class BimDataExtension
     public static BimData ToBimData(this IDataSet set)
     {
         var r = new BimData();
+        r.Diagnostics = ReadTable(set, ToDiagnostic, nameof(r.Diagnostics));
         r.Points = ReadTable(set, ToPoint, nameof(r.Points));
         r.SingleParameters = ReadTable(set, ToParameterSingle, nameof(r.SingleParameters));
         r.EntityParameters = ReadTable(set, ToParameterEntity, nameof(r.EntityParameters));
@@ -116,4 +145,25 @@ public static class BimDataExtension
     public static int ToInt(this RelationIndex self) => (int)self;
     public static int ToInt(this PointIndex self) => (int)self;
     public static int ToInt(this DescriptorIndex self) => (int)self;
+
+    public static IEnumerable<EntityIndex> GetCategories(this IBimData self)
+        => self.Entities.Select(e => e.Category).Distinct();
+    
+    public static IEnumerable<string> GetCategoryNames(this IBimData self)
+        => self.GetCategories().Select(self.GetEntityName).OrderBy(x => x);
+
+    public static IEnumerable<EntityIndex> GetTypes(this IBimData self)
+        => self.Entities.Select(e => e.Type).Distinct();
+
+    public static IEnumerable<string> GetTypeNames(this IBimData self)
+        => self.GetTypes().Select(self.GetEntityName).OrderBy(x => x);
+
+    public static IEnumerable<string> GetDescriptorNames(this IBimData self)
+        => self.Descriptors.Select(x => self.Get(x.Name)).OrderBy(x => x);
+
+    public static string GetDiagnosticString(this IBimData self, Diagnostic d)
+        => $"[{d.Type}] {d.Message}";
+
+    public static IEnumerable<string> GetDiagnosticStrings(this IBimData self)
+        => self.Diagnostics.Select(self.GetDiagnosticString);
 }

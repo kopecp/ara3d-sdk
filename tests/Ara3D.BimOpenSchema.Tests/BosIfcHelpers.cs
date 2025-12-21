@@ -1,6 +1,6 @@
 ﻿namespace Ara3D.BimOpenSchema;
 
-public static class BIMOpenSchemaHelpers
+public static class BosIfcHelpers
 {
     // Informal and incomplete mapping of IFC Relationships to relation types for documentation purposes 
     public static Dictionary<string, RelationType> IfcRelationToRelationType

@@ -121,7 +121,7 @@ public class DataTableFromEntities : IDataTable
                 if (column.ColumnIndex < nonParameterColumnCount)
                     continue;
 
-                if (e.ParameterValues.TryGetValue(column.Name, out var val))
+                if (e.ParameterValues.TryGetValue(column.Name, out var val) && val != null) 
                 {
                     if (val is EntityModel em)
                     {

@@ -6,7 +6,7 @@ namespace Ara3D.BimOpenSchema;
 // This is a helper class for incrementally constructing a BIMData object without repeating objects. 
 public class BimDataBuilder : IBimData
 {
-    public Manifest Manifest { get; set; }
+    public Manifest Manifest { get; set; } = new();
 
     private readonly Dictionary<Entity, int> _entityLookup = new();
     private readonly Dictionary<Document, int> _documentLookup = new();
@@ -109,5 +109,8 @@ public class BimDataBuilder : IBimData
 
     public void AddParameter(EntityIndex e, PointIndex pi, string name, string units, string group)
         => AddParameter(e, pi, AddDescriptor(name, units, group, ParameterType.Int));
+
+    public void AddDiagnostic(DiagnosticType type, string msg, DocumentIndex di, EntityIndex e)
+        => _diagnostics.Add(new(type, di, e, AddString(msg)));
 }
 

@@ -104,12 +104,12 @@ public static class ParquetUtils
         return new ReadOnlyDataTable(name, araColumns);
     }
 
-    public static async Task<ParquetTable<T>> ReadParquetAsync<T>(this FilePath filePath, string? name = null)
+    public static async Task<ParquetTable<T>> ReadParquetAsync<T>(this FilePath filePath, Func<object[], T> ctor, string? name = null)
     {
         name ??= filePath.GetFileNameWithoutExtension();
         var reader = await ParquetReader.CreateAsync(filePath);
         var parquetColumns = await reader.ReadEntireRowGroupAsync();
-        return new ParquetTable<T>(name, parquetColumns);
+        return new ParquetTable<T>(name, parquetColumns, ctor);
     }
 
     public static async Task<IDataTable> ReadParquetAsync(this Stream stream, string name)
@@ -128,11 +128,11 @@ public static class ParquetUtils
         return new ParquetColumn<T>(parquetColumns[0]);
     }
 
-    public static async Task<ParquetTable<T>> ReadParquetAsync<T>(this Stream stream, string name)
+    public static async Task<ParquetTable<T>> ReadParquetAsync<T>(this Stream stream, string name, Func<object[], T> ctor)
     {
         var reader = await ParquetReader.CreateAsync(stream);
         var parquetColumns = await reader.ReadEntireRowGroupAsync();
-        return new ParquetTable<T>(name, parquetColumns);
+        return new ParquetTable<T>(name, parquetColumns, ctor);
     }
 
     /// <summary>
@@ -351,6 +351,41 @@ public static class ParquetUtils
         return bimData;
     }
 
+
+    public static Diagnostic ToDiagnostic(object[] row)
+        => new((DiagnosticType)row[0], (DocumentIndex)row[1], (EntityIndex)row[2], (StringIndex)row[3]);
+
+    public static Point ToPoint(object[] row)
+        => new((float)row[0], (float)row[1], (float)row[2]);
+
+    public static ParameterSingle ToParameterSingle(object[] row)
+        => new((EntityIndex)row[0], (DescriptorIndex)row[1], (float)row[2]);
+
+    public static ParameterEntity ToParameterEntity(object[] row)
+        => new((EntityIndex)row[0], (DescriptorIndex)row[1], (EntityIndex)row[2]);
+
+    public static ParameterPoint ToParameterPoint(object[] row)
+        => new((EntityIndex)row[0], (DescriptorIndex)row[1], (PointIndex)row[2]);
+
+    public static ParameterInt ToParameterInt(object[] row)
+        => new((EntityIndex)row[0], (DescriptorIndex)row[1], (int)row[2]);
+
+    public static ParameterString ToParameterString(object[] row)
+        => new((EntityIndex)row[0], (DescriptorIndex)row[1], (StringIndex)row[2]);
+
+    public static EntityRelation ToRelation(object[] row)
+        => new((EntityIndex)row[0], (EntityIndex)row[1], (RelationType)row[2]);
+
+    public static ParameterDescriptor ToDescriptor(object[] row)
+        => new((StringIndex)row[0], (StringIndex)row[1], (StringIndex)row[2], (ParameterType)row[3]);
+
+    public static Document ToDocument(object[] row)
+        => new((StringIndex)row[0], (StringIndex)row[1]);
+
+    public static Entity ToEntity(object[] row)
+        => new((long)row[0], (StringIndex)row[1], (DocumentIndex)row[2], (StringIndex)row[3], (EntityIndex)row[4], (EntityIndex)row[5]);
+
+
     public static Func<Stream, BimData, Task> GetTableCtor(string name)
     {
         switch (name)
@@ -359,16 +394,17 @@ public static class ParquetUtils
             case nameof(BimData.Strings): return async (stream, data) => data.Strings = await ReadParquetColumnAsync<string>(stream);
 
             // Compound tables
-            case nameof(BimData.Documents): return async (stream, data) => data.Documents = await ReadParquetAsync<Document>(stream, name);
-            case nameof(BimData.Points): return async (stream, data) => data.Points = await ReadParquetAsync<Point>(stream, name);
-            case nameof(BimData.SingleParameters): return async (stream, data) => data.SingleParameters = await ReadParquetAsync<ParameterSingle>(stream, name);
-            case nameof(BimData.EntityParameters): return async (stream, data) => data.EntityParameters = await ReadParquetAsync<ParameterEntity>(stream, name);
-            case nameof(BimData.IntegerParameters): return async (stream, data) => data.IntegerParameters = await ReadParquetAsync<ParameterInt>(stream, name);
-            case nameof(BimData.PointParameters): return async (stream, data) => data.PointParameters = await ReadParquetAsync<ParameterPoint>(stream, name);
-            case nameof(BimData.StringParameters): return async (stream, data) => data.StringParameters = await ReadParquetAsync<ParameterString>(stream, name);
-            case nameof(BimData.Relations): return async (stream, data) => data.Relations = await ReadParquetAsync<EntityRelation>(stream, name);
-            case nameof(BimData.Descriptors): return async (stream, data) => data.Descriptors = await ReadParquetAsync<ParameterDescriptor>(stream, name);
-            case nameof(BimData.Entities): return async (stream, data) => data.Entities = await ReadParquetAsync<Entity>(stream, name);
+            case nameof(BimData.Diagnostics): return async (stream, data) => data.Diagnostics = await ReadParquetAsync(stream, name, ToDiagnostic);
+            case nameof(BimData.Documents): return async (stream, data) => data.Documents = await ReadParquetAsync(stream, name, ToDocument);
+            case nameof(BimData.Points): return async (stream, data) => data.Points = await ReadParquetAsync(stream, name, ToPoint);
+            case nameof(BimData.SingleParameters): return async (stream, data) => data.SingleParameters = await ReadParquetAsync(stream, name, ToParameterSingle);
+            case nameof(BimData.EntityParameters): return async (stream, data) => data.EntityParameters = await ReadParquetAsync(stream, name, ToParameterEntity);
+            case nameof(BimData.IntegerParameters): return async (stream, data) => data.IntegerParameters = await ReadParquetAsync(stream, name, ToParameterInt);
+            case nameof(BimData.PointParameters): return async (stream, data) => data.PointParameters = await ReadParquetAsync(stream, name, ToParameterPoint);
+            case nameof(BimData.StringParameters): return async (stream, data) => data.StringParameters = await ReadParquetAsync(stream, name, ToParameterString);
+            case nameof(BimData.Relations): return async (stream, data) => data.Relations = await ReadParquetAsync(stream, name, ToRelation);
+            case nameof(BimData.Descriptors): return async (stream, data) => data.Descriptors = await ReadParquetAsync(stream, name, ToDescriptor);
+            case nameof(BimData.Entities): return async (stream, data) => data.Entities = await ReadParquetAsync(stream, name, ToEntity);
 
             // Everything else 
             default: return null;

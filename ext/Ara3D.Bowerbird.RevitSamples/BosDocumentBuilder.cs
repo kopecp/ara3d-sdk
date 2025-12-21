@@ -12,15 +12,9 @@ using static Ara3D.BimOpenSchema.CommonRevitParameters;
 using Document = Autodesk.Revit.DB.Document;
 using Domain = Autodesk.Revit.DB.Domain;
 using Exception = System.Exception;
-using Parameter = Ara3D.BimOpenSchema.Parameter;
 using RevitParameter = Autodesk.Revit.DB.Parameter;
 
 namespace Ara3D.Bowerbird.RevitSamples;
-
-public readonly record struct ElementKey(
-    int DocKey, 
-    long ElementId
-);
 
 public class StructuralLayer
 {
@@ -31,37 +25,29 @@ public class StructuralLayer
     public bool IsCore;
 }
 
-public class BimOpenSchemaRevitBuilder
+public class BosDocumentBuilder
 {
-    public BimOpenSchemaRevitBuilder(Document rootDocument, bool includeLinks, bool processDoc = true) 
+    public BosDocumentBuilder(BosRevitBuilder bosRevitBuilder, BosDocumentContext context) 
     {
-        IncludeLinks = includeLinks;
-        CreateCommonDescriptors();
-        if (processDoc)
-            ProcessDocument(rootDocument);
+        DocumentContext = context;
+        BosRevitBuilder = bosRevitBuilder;
+        DocumentIndex = DataBuilder.AddDocument(Document.Title, Document.PathName);
+        DescriptorLookup = bosRevitBuilder.DescriptorLookup;
     }
 
     public const EntityIndex InvalidEntity = (EntityIndex)(-1);
-    public BimDataBuilder Builder = new();
-    public bool IncludeLinks;
-    public Document CurrentDocument;
-    public DocumentIndex CurrentDocumentIndex;
-    public int CurrentDocumentKey;
-    public Dictionary<string, DescriptorIndex> DescriptorLookup = new();
-    public Dictionary<ElementKey, EntityIndex> ProcessedEntities = new();
-    public Dictionary<int, DocumentIndex> ProcessedDocuments = new();
-    public Dictionary<int, Dictionary<int, EntityIndex>> ProcessedConnectors = new();
+
+    public BosDocumentContext DocumentContext { get; }
+    public BosRevitBuilder BosRevitBuilder { get; }
+    public BimDataBuilder DataBuilder => BosRevitBuilder.BimDataBuilder;
+    public DocumentIndex DocumentIndex { get; }
+    public Document Document => DocumentContext.Document;
+    public Dictionary<int, EntityIndex> ProcessedConnectors = new();
     public Dictionary<long, EntityIndex> ProcessedCategories = new();
-    public int BoundaryCount;
+    public Dictionary<string, DescriptorIndex> DescriptorLookup { get; }
 
-    public EntityIndex GetEntityIndex(Document doc, long entityId)
-        => GetEntityIndex(GetDocumentKey(doc), entityId);
-
-    public EntityIndex GetEntityIndex(int key, long entityId)
-        => ProcessedEntities[GetElementKey(key, entityId)];
-
-    public EntityIndex GetEntityIndex(ElementKey key)
-        => ProcessedEntities[key];
+    public IEnumerable<Element> GetElements()
+        => DocumentContext.GetElements();
 
     public static (XYZ min, XYZ max)? GetBoundingBoxMinMax(Element element, View view = null)
     {
@@ -71,19 +57,10 @@ public class BimOpenSchemaRevitBuilder
     }
 
     public PointIndex AddPoint(XYZ xyz)
-        => AddPoint(Builder, xyz);
+        => AddPoint(DataBuilder, xyz);
 
     public static PointIndex AddPoint(BimDataBuilder bdb, XYZ xyz)
         => bdb.AddPoint(new((float)xyz.X, (float)xyz.Y, (float)xyz.Z));
-
-    public void CreateCommonDescriptors()
-    {
-        foreach (var p in GetParameters())
-        {
-            var desc = Builder.AddDescriptor(p.Name, "", "RevitAPI", p.Type);
-            DescriptorLookup.Add(p.Name, desc);
-        }
-    }
 
     public List<StructuralLayer> GetLayers(HostObjAttributes host)
     {
@@ -104,129 +81,129 @@ public class BimOpenSchemaRevitBuilder
 
         return r;
     }
-    
-    public void AddParameter(EntityIndex ei, Parameter p, Func<XYZ> f)
+
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, Func<XYZ> f)
     { try { AddParameter(ei, p, f()); } catch { } }
 
-    public void AddParameter(EntityIndex ei, Parameter p, XYZ xyz)
-        => AddParameter(ei, DescriptorLookup[p.Name], AddPoint(xyz));
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, XYZ xyz)
+        => AddParameter(ei, DescriptorLookup[p], AddPoint(xyz));
 
-    public void AddParameter(EntityIndex ei, Parameter p, Func<string> f)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, Func<string> f)
     { try { AddParameter(ei, p, f()); } catch { } }
 
-    public void AddParameter(EntityIndex ei, Parameter p, string val)
-        => AddParameter(ei, DescriptorLookup[p.Name], val ?? "");
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, string val)
+        => AddParameter(ei, DescriptorLookup[p], val ?? "");
 
     public void AddParameter(EntityIndex ei, DescriptorIndex di, string val)
     {
-        var d = Builder.Get(di);
+        var d = DataBuilder.Get(di);
         if (d.Type != ParameterType.String) throw new Exception($"Expected string not {d.Type}");
-        Builder.AddParameter(ei, val, di);
+        DataBuilder.AddParameter(ei, val, di);
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, Func<DateTime> f)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, Func<DateTime> f)
     { try { AddParameter(ei, p, f()); } catch { } }
 
-    public void AddParameter(EntityIndex ei, Parameter p, DateTime val)
-        => AddParameter(ei, DescriptorLookup[p.Name], val);
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, DateTime val)
+        => AddParameter(ei, DescriptorLookup[p], val);
 
     public void AddParameter(EntityIndex ei, DescriptorIndex di, DateTime val)
     {
-        var d = Builder.Get(di);
+        var d = DataBuilder.Get(di);
         if (d.Type != ParameterType.String) throw new Exception($"Expected string not {d.Type}");
         var str = val.ToString("o", CultureInfo.InvariantCulture);
-        Builder.AddParameter(ei, str, di);
+        DataBuilder.AddParameter(ei, str, di);
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, ElementId eId, RelationType rt)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, ElementId eId, RelationType rt)
     {
         if (eId != ElementId.InvalidElementId)
         {
-            var ei2 = ProcessElement(eId);
-            AddParameter(ei, DescriptorLookup[p.Name], ei2);
-            Builder.AddRelation(ei, ei2, rt);
+            var ei2 = GetElementIndex(eId);
+            AddParameter(ei, DescriptorLookup[p], ei2);
+            DataBuilder.AddRelation(ei, ei2, rt);
         }
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, Element e, RelationType rt)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, Element e, RelationType rt)
     {
         if (e != null && e.IsValidObject)
         {
-            var ei2 = ProcessElement(e);
-            AddParameter(ei, DescriptorLookup[p.Name], ei2);
-            Builder.AddRelation(ei, ei2, rt);
+            var ei2 = GetElementIndex(e.Id);
+            AddParameter(ei, DescriptorLookup[p], ei2);
+            DataBuilder.AddRelation(ei, ei2, rt);
         }
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, ElementId eId)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, ElementId eId)
     {
         if (eId != ElementId.InvalidElementId)
-            AddParameter(ei, DescriptorLookup[p.Name], ProcessElement(eId));
+            AddParameter(ei, DescriptorLookup[p], GetElementIndex(eId));
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, Element e)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, Element e)
     {
         if (e != null && e.IsValidObject) 
-            AddParameter(ei, DescriptorLookup[p.Name], ProcessElement(e));
+            AddParameter(ei, DescriptorLookup[p], GetElementIndex(e.Id));
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, EntityIndex val)
-        => AddParameter(ei, DescriptorLookup[p.Name], val);
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, EntityIndex val)
+        => AddParameter(ei, DescriptorLookup[p], val);
 
     public void AddParameter(EntityIndex ei, DescriptorIndex di, EntityIndex val)
     {
-        var d = Builder.Get(di);
+        var d = DataBuilder.Get(di);
         if (d.Type != ParameterType.Entity) throw new Exception($"Expected entity not {d.Type}");
-        Builder.AddParameter(ei, val, di);
+        DataBuilder.AddParameter(ei, val, di);
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, PointIndex val)
-        => AddParameter(ei, DescriptorLookup[p.Name], val);
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, PointIndex val)
+        => AddParameter(ei, DescriptorLookup[p], val);
 
     public void AddParameter(EntityIndex ei, DescriptorIndex di, PointIndex val)
     {
-        var d = Builder.Get(di);
+        var d = DataBuilder.Get(di);
         if (d.Type != ParameterType.Point) throw new Exception($"Expected point not {d.Type}");
-        Builder.AddParameter(ei, val, di);
+        DataBuilder.AddParameter(ei, val, di);
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, Func<int> f)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, Func<int> f)
     { try { AddParameter(ei, p, f()); } catch { } }
 
-    public void AddParameter(EntityIndex ei, Parameter p, int val)
-        => AddParameter(ei, DescriptorLookup[p.Name], val);
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, int val)
+        => AddParameter(ei, DescriptorLookup[p], val);
 
     public void AddParameter(EntityIndex ei, DescriptorIndex di, int val)
     {
-        var d = Builder.Get(di);
+        var d = DataBuilder.Get(di);
         if (d.Type != ParameterType.Int) throw new Exception($"Expected int not {d.Type}");
-        Builder.AddParameter(ei, val, di);
+        DataBuilder.AddParameter(ei, val, di);
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, Func<bool> f)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, Func<bool> f)
     { try { AddParameter(ei, p, f()); } catch { } }
 
-    public void AddParameter(EntityIndex ei, Parameter p, bool val)
-        => AddParameter(ei, DescriptorLookup[p.Name], val);
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, bool val)
+        => AddParameter(ei, DescriptorLookup[p], val);
 
     public void AddParameter(EntityIndex ei, DescriptorIndex di, bool val)
     {
-        var d = Builder.Get(di);
+        var d = DataBuilder.Get(di);
         if (d.Type != ParameterType.Int) throw new Exception($"Expected int not {d.Type}");
-        Builder.AddParameter(ei, val ? 1 : 0, di);
+        DataBuilder.AddParameter(ei, val ? 1 : 0, di);
     }
 
-    public void AddParameter(EntityIndex ei, Parameter p, Func<double> f)
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, Func<double> f)
     { try { AddParameter(ei, p, f()); } catch { } }
 
-    public void AddParameter(EntityIndex ei, Parameter p, double val)
-        => AddParameter(ei, DescriptorLookup[p.Name], val);
+    public void AddParameter(EntityIndex ei, RevitParameterDesc p, double val)
+        => AddParameter(ei, DescriptorLookup[p], val);
 
     public void AddParameter(EntityIndex ei, DescriptorIndex di, double val)
     {
-        var d = Builder.Get(di);
+        var d = DataBuilder.Get(di);
         if (d.Type != ParameterType.Number) throw new Exception($"Expected double not {d.Type}");
-        Builder.AddParameter(ei, val, di);
+        DataBuilder.AddParameter(ei, val, di);
     }
 
     public void AddDotNetTypeAsParameter(EntityIndex ei, object o)
@@ -235,25 +212,21 @@ public class BimOpenSchemaRevitBuilder
     public void AddDotNetTypeAsParameter(EntityIndex ei, string typeName)
         => AddParameter(ei, ObjectTypeName, typeName);
 
-    public void AddErrorAsParameter(EntityIndex ei, Exception ex)
-    {
-        // TODO: this has to become a diagnostic. 
-        // NOTE: I also want to count these. 
-        throw new NotImplementedException("TODO: replace with something better");
-    }
+    public void AddError(EntityIndex ei, Exception ex)
+        => DataBuilder.AddDiagnostic(DiagnosticType.ExporterError, ex.Message, DocumentIndex, ei);
 
     public EntityIndex ProcessCategory(Category category)
     {
         if (category == null || !category.IsValid)
             return InvalidEntity;
 
-        if (!ProcessedCategories.TryGetValue(category.Id.Value, out var result))
+        if (ProcessedCategories.TryGetValue(category.Id.Value, out var result))
             return result;
 
-        var r = Builder.AddEntity(
+        var r = DataBuilder.AddEntity(
             category.Id.Value, 
             category.Id.ToString(), 
-            CurrentDocumentIndex, 
+            DocumentIndex, 
             category.Name,
             InvalidEntity,
             InvalidEntity);
@@ -267,12 +240,12 @@ public class BimOpenSchemaRevitBuilder
             foreach (Category subCategory in category.SubCategories)
             {
                 var subCatId = ProcessCategory(subCategory);
-                Builder.AddRelation(subCatId, r, RelationType.ChildOf);
+                DataBuilder.AddRelation(subCatId, r, RelationType.ChildOf);
             }
         }
         catch (Exception ex)
         {
-            AddErrorAsParameter(r, ex);
+            AddError(r, ex);
         }
 
         return r;
@@ -286,22 +259,29 @@ public class BimOpenSchemaRevitBuilder
         foreach (var layer in layers)
         {
             var index = layer.LayerIndex;
-            var layerEi = Builder.AddEntity(
-                -1, 
-                $"{host.UniqueId}${index}", 
-                CurrentDocumentIndex, 
-                $"{host.Name}[{index}]", 
+            var layerEi = DataBuilder.AddEntity(
+                -1,
+                $"{host.UniqueId}${index}",
+                DocumentIndex,
+                $"{host.Name}[{index}]",
                 InvalidEntity,
                 InvalidEntity);
 
-            AddParameter(layerEi, LayerIndex, index);
-            AddParameter(layerEi, LayerFunction, layer.Function.ToString());
-            AddParameter(layerEi, LayerWidth, layer.Width);
-            AddParameter(layerEi, LayerIsCore, layer.IsCore);
-            AddParameter(layerEi, LayerMaterialId, layer.MaterialId, RelationType.HasMaterial);
+            try
+            {
+                AddDotNetTypeAsParameter(layerEi, layer);
+                DataBuilder.AddRelation(ei, layerEi, RelationType.HasLayer);
 
-            AddDotNetTypeAsParameter(layerEi, layer);
-            Builder.AddRelation(ei, layerEi, RelationType.HasLayer);
+                AddParameter(layerEi, LayerIndex, index);
+                AddParameter(layerEi, LayerFunction, layer.Function.ToString());
+                AddParameter(layerEi, LayerWidth, layer.Width);
+                AddParameter(layerEi, LayerIsCore, layer.IsCore);
+                AddParameter(layerEi, LayerMaterialId, layer.MaterialId, RelationType.HasMaterial);
+            }
+            catch (Exception ex)
+            {
+                AddError(layerEi, ex);
+            }
         }
     }
 
@@ -357,29 +337,6 @@ public class BimOpenSchemaRevitBuilder
             .GetElement(linkedElementId);
     }
 
-    // Boundaries are pseudo-entities. 
-    public void ProcessBoundary(Document d, EntityIndex roomEntityIndex, BoundarySegment bs, bool isOuterBoundary)
-    {
-        var boundaryElement = GetElement(d, bs.ElementId, bs.LinkElementId);
-        if (boundaryElement == null)
-            return;
-
-        var boundaryElementEntityIndex = ProcessElement(boundaryElement);
-
-        var name = boundaryElement.Name;
-        var newEi = Builder.AddEntity(
-            BoundaryCount++,
-            "",
-            CurrentDocumentIndex,
-            name,
-            InvalidEntity,
-            InvalidEntity);
-
-        AddParameter(newEi, BoundaryOuter, isOuterBoundary);
-        AddParameter(newEi, BoundaryElement, boundaryElementEntityIndex);
-        Builder.AddRelation(roomEntityIndex, boundaryElementEntityIndex, RelationType.BoundedBy);
-    }
-
     public void ProcessLevel(EntityIndex ei, Level level)
     {
         AddParameter(ei, LevelElevation, level.Elevation);
@@ -391,8 +348,8 @@ public class BimOpenSchemaRevitBuilder
         var matIds = e.GetMaterialIds(false);
         foreach (var id in matIds)
         {
-            var matId = ProcessElement(id);
-            Builder.AddRelation(ei, matId, RelationType.HasMaterial);
+            var matId = GetElementIndex(id);
+            DataBuilder.AddRelation(ei, matId, RelationType.HasMaterial);
         }
     }
     
@@ -420,56 +377,31 @@ public class BimOpenSchemaRevitBuilder
                 switch (p.StorageType)
                 {
                     case StorageType.Integer:
-                        AddParameter(entityIndex, Builder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.Int), p.AsInteger());
+                        AddParameter(entityIndex, DataBuilder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.Int), p.AsInteger());
                         break;
                     case StorageType.Double:
-                        AddParameter(entityIndex, Builder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.Number), p.AsDouble());
+                        AddParameter(entityIndex, DataBuilder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.Number), p.AsDouble());
                         break;
                     case StorageType.String:
-                        AddParameter(entityIndex, Builder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.String), p.AsString());
+                        AddParameter(entityIndex, DataBuilder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.String), p.AsString());
                         break;
                     case StorageType.ElementId:
-                        {
-                            var val = p.AsElementId();
-                            if (val == ElementId.InvalidElementId)
-                                continue;
-                            var e = element.Document.GetElement(val);
-                            if (e == null)
-                                continue;
-
-                            // We recursively process the element 
-                            var valIndex = ProcessElement(e);
-                            AddParameter(entityIndex, Builder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.Entity), valIndex);
-                        }
+                        AddParameter(entityIndex, DataBuilder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.Entity), GetElementIndex(p.AsElementId()));
                         break;
                     case StorageType.None:
                     default:
-                        AddParameter(entityIndex, Builder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.String), p.AsValueString());
+                        AddParameter(entityIndex, DataBuilder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.String), p.AsValueString());
                         break;
                 }
             }
             catch (Exception ex) 
             {
-                AddErrorAsParameter(entityIndex, ex);
             }
         }
     }
-    
-    public EntityIndex ProcessElement(ElementId id)
-    {
-        if (id == ElementId.InvalidElementId)
-            return InvalidEntity;
 
-        var key = GetElementKey(CurrentDocumentKey, id.Value);
-        if (ProcessedEntities.TryGetValue(key, out var found))
-            return found;
-
-        var element = CurrentDocument.GetElement(id);
-        if (element == null)
-            return (EntityIndex)(-1);
-
-        return ProcessNewElement(key, element);
-    }
+    public EntityIndex GetElementIndex(ElementId id)
+        => DocumentContext.ElementToEntityIndex.TryGetValue(id.Value, out var ei) ? ei : InvalidEntity;
 
     public static ConnectorManager TryGetConnectorManager(Element e)
     {
@@ -531,36 +463,28 @@ public class BimOpenSchemaRevitBuilder
         return true;
     }
 
-    public EntityIndex ProcessElement(Element element)
-    {
-        if (element == null || !element.IsValidObject)
-            return (EntityIndex)(-1);
-        var docKey = GetDocumentKey(element.Document);
-        var key = GetElementKey(docKey, element.Id.Value);
-        if (ProcessedEntities.TryGetValue(key, out var found))
-            return found;
-        return ProcessNewElement(key, element);
-    }
-
-    public void AddParameter(EntityIndex entityIndex, Parameter p, Connector c)
+    public void AddParameter(EntityIndex entityIndex, RevitParameterDesc p, Connector c)
     {
         if (c == null || p == null)
             return;
-        if (!ProcessedConnectors.TryGetValue(CurrentDocumentKey, out var d))
-            return;
-        if (!d.TryGetValue(c.Id, out var connectorEntityIndex))
+        if (!ProcessedConnectors.TryGetValue(c.Id, out var connectorEntityIndex))
             return;
         AddParameter(entityIndex, p, connectorEntityIndex);
     }
 
-    public EntityIndex ProcessNewElement(ElementKey key, Element e)
+    public EntityIndex ProcessNewElement(ElementId id)
     {
+        if (id == ElementId.InvalidElementId)
+            return InvalidEntity;
+        var e = Document.GetElement(id);
+        if (e == null)
+            return InvalidEntity;
+
         var category = e.Category;
         var catIndex = ProcessCategory(category);
-        var typeIndex = ProcessElement(e.GetTypeId());
+        var typeIndex = GetElementIndex(e.GetTypeId());
 
-        var ei = Builder.AddEntity(e.Id.Value, e.UniqueId, CurrentDocumentIndex, e.Name, catIndex, typeIndex);
-        ProcessedEntities.Add(key, ei);
+        var ei = DataBuilder.AddEntity(e.Id.Value, e.UniqueId, DocumentIndex, e.Name, catIndex, typeIndex);
 
         AddDotNetTypeAsParameter(ei, e);
 
@@ -582,15 +506,15 @@ public class BimOpenSchemaRevitBuilder
         {
             if (location is LocationPoint lp)
             {
-                AddParameter(ei, ElementLocationPoint, AddPoint(Builder, lp.Point));
+                AddParameter(ei, ElementLocationPoint, AddPoint(DataBuilder, lp.Point));
             }
 
             if (location is LocationCurve lc)
             {
                 if (TryGetLocationEndpoints(lc, out var startPoint, out var endPoint))
                 {
-                    AddParameter(ei, ElementLocationStartPoint, AddPoint(Builder, startPoint));
-                    AddParameter(ei, ElementLocationEndPoint, AddPoint(Builder, endPoint));
+                    AddParameter(ei, ElementLocationStartPoint, AddPoint(DataBuilder, startPoint));
+                    AddParameter(ei, ElementLocationEndPoint, AddPoint(DataBuilder, endPoint));
                 }
             }
         }
@@ -632,18 +556,18 @@ public class BimOpenSchemaRevitBuilder
             }
             catch (Exception ex)
             {
-                AddErrorAsParameter(entityIndex, ex);
+                AddError(entityIndex, ex);
             }
         }
     }
 
     public void ProcessSpatialElement(EntityIndex ei, SpatialElement se)
     {
-
         TryProcessAs<Space>(se, ei, ProcessSpace);
         TryProcessAs<Area>(se, ei, ProcessArea);
         TryProcessAs<Room>(se, ei, ProcessRoom);
 
+        /*
         var options = new SpatialElementBoundaryOptions();
         IList<IList<BoundarySegment>> segmentLists = se.GetBoundarySegments(options);
 
@@ -656,11 +580,12 @@ public class BimOpenSchemaRevitBuilder
                 ProcessBoundary(doc, ei, segment, i == 0);
             }
         }
+        */
     }
 
     public void ProcessArea(EntityIndex ei, Area area)
     {
-        AddParameter(ei, AreaSchemeParameter, area.AreaScheme);
+        AddParameter(ei, AreaSchemeRevitParameterDesc, area.AreaScheme);
         AddParameter(ei, AreaIsGrossInterior, area.IsGrossInterior);
     }
 
@@ -754,6 +679,8 @@ public class BimOpenSchemaRevitBuilder
 
     public void ProcessMepSystem(EntityIndex ei, MEPSystem sys)
     {
+        // TODO: this should be an option.
+
         AddParameter(ei, MepSystemBaseEquipment, sys.BaseEquipment);
         AddParameter(ei, MepSystemBaseEquipmentConnector, sys.BaseEquipmentConnector);
         AddParameter(ei, MepSystemHasDesignParts, sys.HasDesignParts);
@@ -766,8 +693,8 @@ public class BimOpenSchemaRevitBuilder
 
         foreach (Element terminal in sys.Elements)
         {
-            var terminalEntityIndex = ProcessElement(terminal);
-            Builder.AddRelation(terminalEntityIndex, ei, RelationType.MemberOf);
+            var terminalEntityIndex = GetElementIndex(terminal.Id);
+            DataBuilder.AddRelation(terminalEntityIndex, ei, RelationType.MemberOf);
         }
 
         TryProcessAs<ElectricalSystem>(sys, ei, ProcessElectricalSystem);
@@ -782,8 +709,8 @@ public class BimOpenSchemaRevitBuilder
 
         foreach (Element duct in ms.DuctNetwork)
         {
-            var ductEntityIndex = ProcessElement(duct);
-            Builder.AddRelation(ductEntityIndex, ei, RelationType.MemberOf);
+            var ductEntityIndex = GetElementIndex(duct.Id);
+            DataBuilder.AddRelation(ductEntityIndex, ei, RelationType.MemberOf);
         }
     }
 
@@ -833,8 +760,8 @@ public class BimOpenSchemaRevitBuilder
 
         foreach (Element pipeOrFitting in pipesAndFittings)
         {
-            var pipeElementIndex = ProcessElement(pipeOrFitting);
-            Builder.AddRelation(pipeElementIndex, ei, RelationType.MemberOf);
+            var pipeElementIndex = GetElementIndex(pipeOrFitting.Id);
+            DataBuilder.AddRelation(pipeElementIndex, ei, RelationType.MemberOf);
         }
 
         AddParameter(ei, PipingSystemTypeStr, ps.SystemType.ToString());
@@ -856,41 +783,22 @@ public class BimOpenSchemaRevitBuilder
         var spaces = z.Spaces;
         foreach (Space space in spaces)
         {
-            var spaceIndex = ProcessElement(space);
-            Builder.AddRelation(entityIndex, spaceIndex, RelationType.ContainedIn);
+            var spaceIndex = GetElementIndex(space.Id);
+            DataBuilder.AddRelation(entityIndex, spaceIndex, RelationType.ContainedIn);
         }
     }
 
-    public static ElementKey GetElementKey(int docKey, long id)
-        => new(docKey, id);
-
-    public static ElementKey GetElementKey(int docKey, ElementId id)
-        => GetElementKey(docKey, id.Value);
-
-    public static ElementKey GetElementKey(Document d, ElementId id)
-        => GetElementKey(GetDocumentKey(d), id);
-
-    public static int GetDocumentKey(Document d)
-        => d.GetHashCode();
-
-    public void ProcessDocument(Document d)
+    public void ProcessDocument()
     {
-        var key = GetDocumentKey(d);
-        if (ProcessedDocuments.ContainsKey(key))
-            return;
-
-        CurrentDocument = d;
-        CurrentDocumentIndex = Builder.AddDocument(d.Title, d.PathName);
-        CurrentDocumentKey = GetDocumentKey(CurrentDocument);
+        var d = Document;
 
         // NOTE: this creates a pseudo-entity for the document, which is used so that we can associate parameters and meta-data with it. 
-        var ei = Builder.AddEntity(ProcessedDocuments.Count, CurrentDocument.CreationGUID.ToString(),
-            CurrentDocumentIndex, d.Title, InvalidEntity, InvalidEntity);
-        ProcessedDocuments.Add(key, CurrentDocumentIndex);
+        var ei = DataBuilder.AddEntity((int)DocumentIndex, d.CreationGUID.ToString(),
+            DocumentIndex, d.Title, InvalidEntity, InvalidEntity);
 
         AddDotNetTypeAsParameter(ei, d);
 
-        var siteLocation = CurrentDocument.SiteLocation;
+        var siteLocation = Document.SiteLocation;
             
         var fi = new FileInfo(d.PathName);
         if (fi.Exists)
@@ -905,19 +813,30 @@ public class BimOpenSchemaRevitBuilder
             }
         }
 
+        var warnings = Document.GetWarnings();
+        foreach (var w in warnings)
+        {
+            var type = w.GetSeverity() == FailureSeverity.Warning 
+                ? DiagnosticType.RevitWarning
+                : DiagnosticType.RevitError;
+            DataBuilder.AddDiagnostic(type, w.GetDescriptionText(), DocumentIndex, ei);
+        }
+
         ProcessConnectors();
 
         try
         {
-            AddParameter(ei, DocumentPath, CurrentDocument.PathName);
-            AddParameter(ei, DocumentTitle, CurrentDocument.Title);
-            AddParameter(ei, DocumentIsDetached, CurrentDocument.IsDetached);
-            AddParameter(ei, DocumentIsLinked, CurrentDocument.IsLinked);
+            AddParameter(ei, DocumentPath, Document.PathName);
+            AddParameter(ei, DocumentTitle, Document.Title);
+            AddParameter(ei, DocumentIsDetached, Document.IsDetached);
+            AddParameter(ei, DocumentIsLinked, Document.IsLinked);
+            AddParameter(ei, DocumentExternalPath, DocumentContext.ExternalPath);
+            AddParameter(ei, DocumentLinkName, DocumentContext.LinkName);
 
-            if (CurrentDocument.IsWorkshared)
-                AddParameter(ei, DocumentWorksharingGuid, CurrentDocument.WorksharingCentralGUID.ToString());
+            if (Document.IsWorkshared)
+                AddParameter(ei, DocumentWorksharingGuid, Document.WorksharingCentralGUID.ToString());
 
-            AddParameter(ei, DocumentCreationGuid, CurrentDocument.CreationGUID.ToString());
+            AddParameter(ei, DocumentCreationGuid, Document.CreationGUID.ToString());
             AddParameter(ei, DocumentElevation, siteLocation.Elevation);
             AddParameter(ei, DocumentLatitude, siteLocation.Latitude);
             AddParameter(ei, DocumentLongitude, siteLocation.Longitude);
@@ -925,7 +844,7 @@ public class BimOpenSchemaRevitBuilder
             AddParameter(ei, DocumentWeatherStationName, siteLocation.WeatherStationName);
             AddParameter(ei, DocumentTimeZone, siteLocation.TimeZone);
 
-            var projectInfo = CurrentDocument.ProjectInformation;
+            var projectInfo = Document.ProjectInformation;
             if (projectInfo != null)
             {
                 AddParameter(ei, ProjectAddress, projectInfo.Address);
@@ -942,21 +861,39 @@ public class BimOpenSchemaRevitBuilder
         }
         catch (Exception ex)
         {
-            AddErrorAsParameter(ei, ex);
+            AddError(ei, ex);
         }
 
-        foreach (var e in CurrentDocument.GetElements())
-            ProcessElement(e);
+        // Process non-type elements
+        foreach (var id in DocumentContext.ElementIds)
+        {
+            try
+            {
+                ProcessNewElement(new ElementId(id));
+            }
+            catch(Exception ex)
+            {
+                AddError(GetElementIndex(new ElementId(id)), ex);
+            }
+        }
 
-        if (IncludeLinks)
-            foreach (var linkedDoc in d.GetLinkedDocuments())
-                ProcessDocument(linkedDoc);
+        // Process type elements
+        foreach (var id in DocumentContext.TypeIds)
+        {
+            try
+            {
+                ProcessNewElement(new ElementId(id));
+            }
+            catch (Exception ex)
+            {
+                AddError(GetElementIndex(new ElementId(id)), ex);
+            }
+        }
     }
 
     public EntityIndex ProcessConnector(Connector conn)
     {
-        // LocalId = conn.Id (int), GlobalId = empty, Name = empty, Category = "Connector"
-        var entityIndex = Builder.AddEntity(conn.Id, "", CurrentDocumentIndex, "", InvalidEntity, InvalidEntity);
+        var entityIndex = DataBuilder.AddEntity(conn.Id, "", DocumentIndex, "", InvalidEntity, InvalidEntity);
         AddDotNetTypeAsParameter(entityIndex, conn);
 
         try
@@ -1076,30 +1013,22 @@ public class BimOpenSchemaRevitBuilder
         }
         catch (Exception ex)
         {
-            AddErrorAsParameter(entityIndex, ex);
+            AddError(entityIndex, ex);
         }
 
         return entityIndex;
     }
 
-
     public void ProcessConnectors()
     {
-        var doc = CurrentDocument;
-        if (ProcessedConnectors.ContainsKey(CurrentDocumentKey))
-            return;
-
-        var currentConnectorSet = new Dictionary<int, EntityIndex>();
-        ProcessedConnectors.Add(CurrentDocumentKey, currentConnectorSet);
-        
-        var cms = GetConnectorManagers(doc);
+        var cms = GetConnectorManagers(Document);
         foreach (ConnectorManager cm in cms)
         {
             foreach (Connector conn in cm.Connectors)
             {
-                if (!currentConnectorSet.ContainsKey(conn.Id))
+                if (!ProcessedConnectors.ContainsKey(conn.Id))
                 {
-                    currentConnectorSet.Add(conn.Id, ProcessConnector(conn));
+                    ProcessedConnectors.Add(conn.Id, ProcessConnector(conn));
                 }
             }
         }

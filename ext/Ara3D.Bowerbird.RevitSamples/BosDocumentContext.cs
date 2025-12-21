@@ -8,11 +8,10 @@ using ElementId = Autodesk.Revit.DB.ElementId;
 
 namespace Ara3D.Bowerbird.RevitSamples;
 
-public class DocumentElements
+public class BosDocumentContext
 {
-
     public readonly Document Document;
-    public readonly Document HostDocument;
+    public readonly BosDocumentContext Parent;
     public readonly RevitLinkInstance LinkInstance;
     public readonly List<long> ElementIds = [];
     public readonly HashSet<long> TypeIds = [];
@@ -23,48 +22,59 @@ public class DocumentElements
     public readonly string ExternalPath = "";
     public readonly string Title = "";
     public readonly bool IsDetached;
+    public readonly Transform Transform = Transform.Identity;
 
-    public DocumentElements(Document document, Document hostDoc = null, RevitLinkInstance rli = null)
+    public BosDocumentContext(Document document, BosDocumentContext parent = null, RevitLinkInstance rli = null)
     {
         Document = document;
-        HostDocument = hostDoc;
+        Parent = parent;
+        
+        if (rli != null)
+        {
+            Transform = rli.GetTransform();
+            if (parent != null)
+            {
+                Transform = parent.Transform.Multiply(Transform);
+            }
+        }
+
         LinkInstance = rli;
         IsDetached = document.IsDetached;
         Path = document.PathName;
         Title = document.Title;
         if (LinkInstance != null)
         {
-            if (hostDoc == null)
-                throw new ArgumentNullException("If the RevitLinkInstance is present, the host document must not be null");
+            if (Parent == null)
+                throw new ArgumentNullException("If the RevitLinkInstance is present, the parent must not be null");
             IsLink = true;
             LinkName = rli.Name;
             var typeId = rli.GetTypeId();
-            var extRef = ExternalFileUtils.GetExternalFileReference(HostDocument, typeId);
+            var extRef = ExternalFileUtils.GetExternalFileReference(Parent.Document, typeId);
             var modelPath = extRef.GetPath();
             ExternalPath = modelPath == null ? "" : ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath) ?? "";
         }
     }
 
-    public static DocumentElements Create(Document hostDocument, RevitLinkInstance rli)
+    public static BosDocumentContext Create(BosDocumentContext parent, RevitLinkInstance rli)
     {
         var linkDocument = rli.GetLinkDocument();
-        return linkDocument != null ? new DocumentElements(linkDocument, hostDocument, rli) : null;
+        return linkDocument != null ? new BosDocumentContext(linkDocument, parent, rli) : null;
     }
 
-    public List<DocumentElements> GatherLinkedDocuments()
+    public List<BosDocumentContext> GatherLinkedDocuments()
     {
-        var r = new HashSet<DocumentElements>();
+        var r = new HashSet<BosDocumentContext>();
         GatherLinkedDocuments(r);
         return r.ToList();
     }
 
-    public void GatherLinkedDocuments(HashSet<DocumentElements> set)
+    public void GatherLinkedDocuments(HashSet<BosDocumentContext> set)
     {
         if (!set.Add(this))
             return;
         foreach (var link in Document.GetLinks())
         {
-            var tmp = Create(Document, link);
+            var tmp = Create(this, link);
             tmp?.GatherLinkedDocuments(set);
         }
     }
@@ -80,18 +90,19 @@ public class DocumentElements
             ElementToEntityIndex.Add(val, (EntityIndex)ElementIds.Count);
             ElementIds.Add(val);
         }
-    }
-
-    public void RetrieveUsedTypeIds()
-    {
-        if (TypeIds.Count > 0)
-            throw new Exception("Element type ids already retrieved");
+    
         foreach (var id in ElementIds)
         {
             var e = Document.GetElement(new ElementId(id));
             var typeId = e.GetTypeId();
             if (typeId != ElementId.InvalidElementId)
-                TypeIds.Add(typeId.Value);
+            {
+                var val = typeId.Value;
+                var index = ElementIds.Count + TypeIds.Count;
+                 if (!TypeIds.Add(val))
+                    continue;
+                ElementToEntityIndex.TryAdd(val, (EntityIndex)index);
+            }
         }
     }
 
@@ -102,5 +113,15 @@ public class DocumentElements
         => Key.GetHashCode();
 
     public override bool Equals(object obj)
-        => obj is DocumentElements de && Key == de.Key;
+        => obj is BosDocumentContext de && Key == de.Key;
+
+    public IEnumerable<Element> GetElements()
+    {
+        foreach (var eid in ElementIds)
+        {
+            var e = Document.GetElement(new ElementId(eid));
+            if (e != null)
+                yield return e;
+        }
+    }
 }

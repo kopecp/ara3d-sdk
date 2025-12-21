@@ -1,7 +1,9 @@
-﻿using Autodesk.Revit.DB;
+﻿using Ara3D.BimOpenSchema;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Document = Autodesk.Revit.DB.Document;
 using Material = Ara3D.Models.Material;
 
 namespace Ara3D.Bowerbird.RevitSamples;
@@ -23,7 +25,7 @@ public sealed record GeometryPart
 public sealed record Geometry
 (
     Element Element,
-    ElementKey ElementKey,
+    EntityIndex EntityIndex,
     Material? DefaultMaterial,
     IReadOnlyList<GeometryPart> Parts
 );
@@ -33,147 +35,39 @@ public sealed record Geometry
 /// </summary>
 public class MeshGatherer
 {
-    public BimOpenSchemaRevitBuilder BimOpenSchemaRevitBuilder;
-    public Document CurrentDocument { get; private set; }
-    public int CurrentDocumentKey { get; private set; }
-    public HashSet<int> ProcessedDocuments { get; } = [];
+    public BosDocumentBuilder BosDocumentBuilder { get; }
+    public Options Options => BosDocumentBuilder.BosRevitBuilder.Options;
+    public Document CurrentDocument => BosDocumentBuilder.Document;
+
     public List<Mesh> MeshList { get; } = [];
-    public List<Geometry> Geometries { get; private set; } = [];
+    public List<Geometry> Geometries { get; } = [];
+  
     private readonly Dictionary<string, IReadOnlyList<GeometryPart>> _symbolCache = new();
 
-    public MeshGatherer(BimOpenSchemaRevitBuilder revitBuilder)
+    public MeshGatherer(BosDocumentBuilder docBuilder)
     {
-        BimOpenSchemaRevitBuilder = revitBuilder;
-    }
-
-    public static int GetDocumentKey(Document d)
-        => BimOpenSchemaRevitBuilder.GetDocumentKey(d);
-
-    public void CollectMeshes(Document doc, Options options, bool recurseLinks, Transform parent)
-    {
-        if (options.View != null)
-        {
-            CollectMeshesByView(doc, options, recurseLinks, parent);
-            return;
-        }
-
-        var newDocumentKey = GetDocumentKey(doc);
-        if (ProcessedDocuments.Contains(newDocumentKey))
-            return;
-
-        var previousDocumentKey = CurrentDocumentKey;
-        var previousDocument = CurrentDocument;
-        CurrentDocument = doc;
-        CurrentDocumentKey = newDocumentKey;
-        ProcessedDocuments.Add(CurrentDocumentKey);
-
-        try
-        {
-            var elems = new FilteredElementCollector(doc)
-                .WhereElementIsNotElementType()
-                .ToElements()
-                .Where(e => e is not RevitLinkInstance);
-
-            foreach (var e in elems)
-            {
-                if (e?.Id == null) continue;
-                var g = ComputeGeometry(e, parent, options);
-                if (g != null)
-                    Geometries.Add(g);
-            }
-
-            if (recurseLinks)
-            {
-                foreach (var rli in new FilteredElementCollector(doc)
-                             .OfClass(typeof(RevitLinkInstance))
-                             .Cast<RevitLinkInstance>())
-                {
-                    var linkDoc = rli.GetLinkDocument();
-                    if (linkDoc is null)
-                        continue;
-
-                    var linkTransform = rli.GetTransform();
-                    CollectMeshes(linkDoc, options, true, parent.Multiply(linkTransform));
-                }
-            }
-        }
-        finally
-        {
-            CurrentDocument = previousDocument;
-            CurrentDocumentKey = previousDocumentKey;
+        BosDocumentBuilder = docBuilder;
+        var transform = docBuilder.DocumentContext.Transform;
+        foreach (var e in BosDocumentBuilder.GetElements())
+        { 
+            var g = ComputeGeometry(e, transform);
+            if (g != null)
+                Geometries.Add(g);
         }
     }
 
-    // NOTE: not a recursive call, like the CollectMeshes call. 
-    public void CollectMeshesByView(Document doc, Options options, bool recurseLinks, Transform parent)
-    {
-        var documentKey = GetDocumentKey(doc);
-        if (ProcessedDocuments.Contains(documentKey))
-            return;
-        CurrentDocument = doc;
-        CurrentDocumentKey = documentKey;
-        ProcessedDocuments.Add(CurrentDocumentKey);
-
-        var view = options.View;
-
-        // host elements visible in the view
-        var elems = new FilteredElementCollector(doc, view.Id)
-            .WhereElementIsNotElementType()
-            .Where(e => e is not RevitLinkInstance);
-
-        foreach (var e in elems)
-        {
-            var g = ComputeGeometry(e, parent, options);
-            if (g != null) Geometries.Add(g);
-        }
-
-        if (!recurseLinks) return;
-
-        // link instances visible in the host view
-        var linkInstances = new FilteredElementCollector(doc, view.Id)
-            .OfClass(typeof(RevitLinkInstance))
-            .Cast<RevitLinkInstance>();
-
-        foreach (var rli in linkInstances)
-        {
-            var linkDoc = rli.GetLinkDocument();
-            if (linkDoc is null) continue;
-
-            var newDocumentKey = GetDocumentKey(linkDoc);
-            if (ProcessedDocuments.Contains(newDocumentKey))
-                continue;
-
-            CurrentDocument = linkDoc;
-            CurrentDocumentKey = newDocumentKey;
-            ProcessedDocuments.Add(CurrentDocumentKey);
-
-            var linkXf = parent.Multiply(rli.GetTransform());
-
-            // linked elements visible *through this link instance* in the host view (Revit 2024+)
-            var linkedElems = new FilteredElementCollector(doc, view.Id, rli.Id)
-                .WhereElementIsNotElementType();
-
-            foreach (var le in linkedElems)
-            {
-                // le.Document should be the linkDoc (i.e., element comes from the linked model)
-                var g = ComputeGeometry(le, linkXf, options);
-                if (g != null) Geometries.Add(g);
-            }
-        }
-    }
-
-    public Geometry ComputeGeometry(Element e, Transform transform, Options options)
+    public Geometry ComputeGeometry(Element e, Transform transform)
     {
         try
         {
-            var elementKey = new ElementKey(CurrentDocumentKey, e.Id.Value);
             var material = e.ResolveFallbackMaterial();
-            var geometryElement = e.get_Geometry(options);
+            var geometryElement = e.get_Geometry(Options);
             if (geometryElement == null) return null;
             var parts = new List<GeometryPart>();
             TraverseElementGeometry(geometryElement, transform, parts);
             if (parts.Count == 0) return null;
-            return new Geometry(e, elementKey, material, parts);
+            var ei = BosDocumentBuilder.GetElementIndex(e.Id);
+            return new Geometry(e, ei, material, parts);
         }
         catch
         {
@@ -229,13 +123,7 @@ public class MeshGatherer
     }
 
     public string GetSymbolCacheKey(SymbolGeometryId symbolId)
-    {
-        if (symbolId == null) return null;
-        var symbolElementId = symbolId.SymbolId;
-        var symbol = CurrentDocument.GetElement(symbolElementId);
-        if (symbol == null) return null;
-        return $"{CurrentDocumentKey}_{symbolElementId.Value}";
-    }
+        => symbolId?.AsUniqueIdentifier();
 
     private IReadOnlyList<GeometryPart> GetOrBuildSymbolTemplates(GeometryInstance gi, Transform worldFromParent)
     {
