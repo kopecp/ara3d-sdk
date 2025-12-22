@@ -33,7 +33,7 @@ public sealed record Geometry
 /// <summary>
 /// Collects all meshes
 /// </summary>
-public class MeshGatherer
+public class BosMeshGatherer
 {
     public BosDocumentBuilder BosDocumentBuilder { get; }
     public Options Options => BosDocumentBuilder.BosRevitBuilder.Options;
@@ -44,7 +44,7 @@ public class MeshGatherer
   
     private readonly Dictionary<string, IReadOnlyList<GeometryPart>> _symbolCache = new();
 
-    public MeshGatherer(BosDocumentBuilder docBuilder)
+    public BosMeshGatherer(BosDocumentBuilder docBuilder)
     {
         BosDocumentBuilder = docBuilder;
         var transform = docBuilder.DocumentContext.Transform;

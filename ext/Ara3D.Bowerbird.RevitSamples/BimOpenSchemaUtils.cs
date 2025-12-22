@@ -38,8 +38,9 @@ namespace Ara3D.Bowerbird.RevitSamples
 
         public static void BuildGeometry(this BosDocumentBuilder bdb, BimGeometryBuilder builder)
         {
-            var meshGatherer = new MeshGatherer(bdb);
+            var meshGatherer = new BosMeshGatherer(bdb);
 
+            var meshOffset = builder.Meshes.Count;
             builder.Meshes.AddRange(meshGatherer.MeshList.Select(m => m.ToAra3D()));
 
             var geometries = meshGatherer.Geometries.Where(IsVis).ToList();
@@ -56,7 +57,7 @@ namespace Ara3D.Bowerbird.RevitSamples
                         : builder.AddMaterial(part.Material.Value);
 
                     var transformIndex = builder.AddTransform(part.Transform.ToAra3D());
-                    builder.AddInstance((int)g.EntityIndex, matIndex, part.MeshIndex, transformIndex);
+                    builder.AddInstance((int)g.EntityIndex, matIndex, part.MeshIndex + meshOffset, transformIndex);
                 }
             }
         }

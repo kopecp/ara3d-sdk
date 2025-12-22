@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Document = Autodesk.Revit.DB.Document;
 using ElementId = Autodesk.Revit.DB.ElementId;
@@ -22,20 +23,26 @@ public class BosDocumentContext
     public readonly string ExternalPath = "";
     public readonly string Title = "";
     public readonly bool IsDetached;
-    public readonly Transform Transform = Transform.Identity;
+    public readonly Transform Transform;
 
     public BosDocumentContext(Document document, BosDocumentContext parent = null, RevitLinkInstance rli = null)
     {
+        if (rli == null || parent == null)
+            if (rli != null || parent != null)
+                throw new Exception("If either the RevitLinkInstance is null or the parent is null, both must be null");
+
         Document = document;
         Parent = parent;
-        
+
         if (rli != null)
         {
+            Debug.Assert(parent != null);
             Transform = rli.GetTransform();
-            if (parent != null)
-            {
-                Transform = parent.Transform.Multiply(Transform);
-            }
+            Transform = parent.Transform.Multiply(Transform);
+        }
+        else
+        {
+            Transform = Transform.Identity;
         }
 
         LinkInstance = rli;

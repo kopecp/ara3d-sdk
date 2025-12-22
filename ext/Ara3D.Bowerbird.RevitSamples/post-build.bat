@@ -7,7 +7,7 @@ if "%~1"=="" (
 )
 
 mkdir "%ScriptsDir%"
-del "%ScriptsDir%"\*.* /y
+del "%ScriptsDir%*.*" /q
 xcopy ..\Ara3D.Bowerbird.RevitSamples\*.cs "%ScriptsDir%" /y
 xcopy ..\Ara3D.Bowerbird.RevitSamples\*.txt "%ScriptsDir%" /y
 
