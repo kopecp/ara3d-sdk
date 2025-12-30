@@ -2,16 +2,6 @@
 
 namespace Ara3D.Studio.API;
 
-public enum EvalObjectTypes
-{
-    Unknown,
-    Model3D,
-    TriangleMesh3D,
-    LineMesh3D,
-    Points3D, 
-    Transforms3D,
-}
-
 public enum KnownOptions
 {
     VertexColors,
@@ -25,8 +15,7 @@ public enum KnownBuffer
 
 public sealed class EvalObject
 {
-    public object Value { get; set; }
-    public EvalObjectTypes ObjectType { get; set; }
-    public Dictionary<string, object> Settings { get; set; }
-    public Dictionary<string, IBuffer> Buffers { get; set; }
+    public object? Value { get; set; }
+    public Dictionary<string, object> Settings { get; set; } = new();
+    public Dictionary<string, IBuffer> Buffers { get; set; } = new();
 }

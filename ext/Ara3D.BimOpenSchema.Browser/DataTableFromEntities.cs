@@ -62,11 +62,12 @@ public class DataTableFromEntities : IDataTable
         var localIdColumn = AddColumn("LocalId", typeof(long));
         var documentColumn = AddColumn("Document", typeof(int));
         var categoryColumn = AddColumn("Category", typeof(string));
+        var categoryTypeColumn = AddColumn("CategoryType", typeof(string));
         var classNameColumn = AddColumn("ClassName", typeof(string));
         var levelColumn = AddColumn("Level", typeof(string));
         var groupColumn = AddColumn("Group", typeof(string));
         var roomColumn = AddColumn("Room", typeof(string));
-        var familyTypeColumn = AddColumn("FamilyType", typeof(string));
+        var familyTypeColumn = AddColumn("Type", typeof(string));
 
         //var assemblyColumn = AddColumn("Assembly", typeof(string));
         //var worksetColumn = AddColumn("Workset", typeof(int));
@@ -103,11 +104,12 @@ public class DataTableFromEntities : IDataTable
             localIdColumn.Values.Add(e.LocalId);
             documentColumn.Values.Add(e.DocumentTitle);
             categoryColumn.Values.Add(e.Category);
+            categoryTypeColumn.Values.Add(e.CategoryType);
             classNameColumn.Values.Add(e.ClassName);
             levelColumn.Values.Add(e.LevelName);
             groupColumn.Values.Add(e.GroupName);
             roomColumn.Values.Add(e.RoomName);
-            familyTypeColumn.Values.Add(e.FamilyType);
+            familyTypeColumn.Values.Add(e.Type);
 
             //globalIdColumn.Values.Add(e.GlobalId);
             //assemblyColumn.Values.Add(e.AssemblyName);

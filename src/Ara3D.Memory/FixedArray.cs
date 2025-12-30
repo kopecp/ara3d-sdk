@@ -73,6 +73,6 @@ public sealed unsafe class FixedArray<T> : IMemoryOwner<T>
         => Dispose();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IMemoryOwner<T1> Cast<T1>() where T1 : unmanaged
+    public IMemoryOwner<T1> Convert<T1>() where T1 : unmanaged
         => new MemoryOwner<T1>(this);
 }

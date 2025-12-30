@@ -3,6 +3,7 @@ using System.Windows.Input;
 
 namespace Ara3D.Utils
 {
+
     /// <summary>
     /// A command represents a single executable action.
     /// It can be used as a way of naming and grouping a set of mutations
@@ -62,6 +63,6 @@ namespace Ara3D.Utils
         public Delegate CanExecuteDelegate { get; }
         public Delegate ExecuteDelegate { get; }
         public event EventHandler CanExecuteChanged;
-        public string Name { get; }
+        public string Name { get; set; }
     }
 }

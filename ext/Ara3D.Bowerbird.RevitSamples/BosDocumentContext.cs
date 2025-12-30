@@ -34,32 +34,25 @@ public class BosDocumentContext
         Document = document;
         Parent = parent;
 
-        if (rli != null)
-        {
-            Debug.Assert(parent != null);
-            Transform = rli.GetTransform();
-            Transform = parent.Transform.Multiply(Transform);
-        }
-        else
-        {
-            Transform = Transform.Identity;
-        }
+        Transform = rli != null 
+            ? parent.Transform.Multiply(rli.GetTransform()) 
+            : Transform.Identity;
 
         LinkInstance = rli;
         IsDetached = document.IsDetached;
         Path = document.PathName;
         Title = document.Title;
-        if (LinkInstance != null)
-        {
-            if (Parent == null)
-                throw new ArgumentNullException("If the RevitLinkInstance is present, the parent must not be null");
-            IsLink = true;
-            LinkName = rli.Name;
-            var typeId = rli.GetTypeId();
-            var extRef = ExternalFileUtils.GetExternalFileReference(Parent.Document, typeId);
-            var modelPath = extRef.GetPath();
-            ExternalPath = modelPath == null ? "" : ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath) ?? "";
-        }
+
+        if (LinkInstance == null) 
+            return;
+        
+        IsLink = true;
+        LinkName = LinkInstance.Name;
+        var typeId = LinkInstance.GetTypeId();
+        var extRef = ExternalFileUtils.GetExternalFileReference(Parent.Document, typeId);
+        var modelPath = extRef.GetPath();
+        ExternalPath = modelPath == null 
+            ? "" : ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath) ?? "";
     }
 
     public static BosDocumentContext Create(BosDocumentContext parent, RevitLinkInstance rli)

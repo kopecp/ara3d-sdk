@@ -49,7 +49,6 @@ public static class CommonRevitParameters
     public static RevitParameterDesc FIHost = new("Rvt:FamilyInstance:Host", ParameterType.Entity);
     public static RevitParameterDesc FISpace = new("Rvt:FamilyInstance:Space", ParameterType.Entity);
     public static RevitParameterDesc FIRoom = new("Rvt:FamilyInstance:Room", ParameterType.Entity);
-    public static RevitParameterDesc FIFamilyType = new("Rvt:FamilyInstance:FamilyType", ParameterType.Entity);
     public static RevitParameterDesc FIStructuralUsage = new("Rvt:FamilyInstance:StructuralUsage", ParameterType.String);
     public static RevitParameterDesc FIStructuralMaterialType = new("Rvt:FamilyInstance:StructuralMaterialType", ParameterType.String);
     public static RevitParameterDesc FIStructuralMaterial = new("Rvt:FamilyInstance:StructuralMaterial", ParameterType.Entity);

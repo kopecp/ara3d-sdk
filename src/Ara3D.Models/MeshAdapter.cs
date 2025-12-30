@@ -13,8 +13,8 @@ public sealed class MeshAdapter : IDisposable
     {   
         PointData = pointData;
         IndexData = indexData;
-        var points = PointData.Reinterpret<Point3D>();
-        var indices = IndexData.Reinterpret<Integer3>();
+        var points = BufferExtensions.Reinterpret<Point3D>(PointData);
+        var indices = BufferExtensions.Reinterpret<Integer3>(IndexData);
         Mesh = new TriangleMesh3D(points, indices);
     }
 

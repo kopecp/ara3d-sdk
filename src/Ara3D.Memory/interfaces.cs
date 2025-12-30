@@ -33,7 +33,7 @@ namespace Ara3D.Memory
     /// </summary>
     public interface IMemoryOwner : IBuffer, IDisposable
     {
-        public IMemoryOwner<T> Cast<T>() where T : unmanaged;
+        public IMemoryOwner<T> Convert<T>() where T : unmanaged;
     }
 
     /// <summary>

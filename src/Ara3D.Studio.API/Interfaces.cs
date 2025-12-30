@@ -1,0 +1,78 @@
+﻿using Ara3D.Logging;
+using Ara3D.Models;
+using Ara3D.Utils;
+
+namespace Ara3D.Studio.API;
+
+/// <summary>
+/// A scripted component, is one that is loaded from a plug-in DLL or a C# source file 
+/// </summary>
+public interface IScriptedComponent
+{ }
+
+/// <summary>
+/// An asset is a piece of data that was loaded from disk 
+/// </summary>
+public interface IAsset
+{
+}
+
+/// <summary>
+/// An asset that contains geometry (a mesh, a scene graph, a set of poly-lines) and that is ready to be rendered 
+/// </summary>
+public interface IRenderableAsset : IAsset, IDisposable
+{
+    RenderModelData RenderData { get; }
+}
+
+/// <summary>
+/// An asset that contains a Model3D, which is a collection of instanced triangle meshes.
+/// Currently: this excludes point clouds, poly lines, and quad meshes.
+/// </summary>
+public interface IModelAsset : IAsset
+{
+    IModel3D Model { get; }
+}
+
+/// <summary>
+/// This is an object that can appear in a graph and represents a loaded asset. 
+/// </summary>
+public interface IAssetSource : IDisposable
+{
+    IAsset Eval(EvalContext context);
+    Task<IAsset> InitialLoad(ILogger logger);
+}
+
+/// <summary>
+/// This is a 
+/// </summary>
+public interface ILoader : IScriptedComponent
+{
+    Task<IRenderableAsset> Load(FilePath filePath, ILogger logger);
+}
+
+/// <summary>
+/// A script that generates 3D models  
+/// </summary>
+public interface IModelGenerator : IScriptedComponent
+{
+    IModel3D Eval(EvalContext context);
+}
+
+/// <summary>
+/// A modifier that converts from objects into other objects. 
+/// </summary>
+public interface IModelModifier : IScriptedComponent
+{
+    IModel3D Eval(IModel3D model3D, EvalContext context);
+}
+
+/// <summary>
+/// An executable command 
+/// </summary>
+public interface IScriptedCommand : IScriptedComponent
+{
+    string Name { get; }
+    void Execute(IHostApplication app);
+    bool CanExecute(IHostApplication app);
+}

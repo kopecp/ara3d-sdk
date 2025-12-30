@@ -67,4 +67,16 @@ public record struct Material(Color Color, float Metallic, float Roughness)
             Color.A.Value.ToByteFromNormalized(),
             Metallic.ToByteFromNormalized(),
             Roughness.ToByteFromNormalized());
+
+    public bool Transparent
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Color.A <= 0.999f;
+    }
+
+    public bool Visible
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Color.A >= 0.001f;
+    }
 }

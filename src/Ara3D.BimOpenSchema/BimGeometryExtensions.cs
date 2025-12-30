@@ -11,12 +11,12 @@ namespace Ara3D.BimOpenSchema;
 public static class BimGeometryExtensions
 {
     public static int GetNumMaterials(this BimGeometry self) => self.MaterialRed.Length;
-    public static int GetNumVertices(this BimGeometry self) => self.VertexX.Length / 3;
+    public static int GetNumVertices(this BimGeometry self) => self.VertexX.Length;
     public static int GetNumFaces(this BimGeometry self) => self.GetNumIndices() / 3;
     public static int GetNumIndices(this BimGeometry self) => self.IndexBuffer.Length;
     public static int GetNumTransforms(this BimGeometry self) => self.TransformTX.Length;
     public static int GetNumMeshes(this BimGeometry self) => self.MeshIndexOffset.Length;
-    public static int GetNumElements(this BimGeometry self) => self.InstanceMeshIndex.Length;
+    public static int GetNumInstances(this BimGeometry self) => self.InstanceMeshIndex.Length;
 
     public static IReadOnlyList<Point3D> GetMeshPoints(this BimGeometry self, int meshIndex)
     {
@@ -79,12 +79,12 @@ public static class BimGeometryExtensions
             self.MaterialMetallic[materialIndex].ToNormalizedFloat(),
             self.MaterialRoughness[materialIndex].ToNormalizedFloat());
 
-    public static InstanceStruct GetInstanceStruct(this BimGeometry self, int elementIndex)
+    public static InstanceStruct GetInstanceStruct(this BimGeometry self, int instanceIndex)
         => new(
-            self.InstanceEntityIndex[elementIndex],
-            self.GetElementMatrix(elementIndex), 
-            self.InstanceMeshIndex[elementIndex], 
-            self.GetElementMaterial(elementIndex));
+            self.InstanceEntityIndex[instanceIndex],
+            self.GetInstanceMatrix(instanceIndex), 
+            self.InstanceMeshIndex[instanceIndex], 
+            self.GetInstanceMaterial(instanceIndex));
 
     public static Material GetMaterial(this BimGeometry self, int materialIndex)
         => new(
@@ -92,10 +92,10 @@ public static class BimGeometryExtensions
             self.MaterialMetallic[materialIndex].ToNormalizedFloat(),
             self.MaterialRoughness[materialIndex].ToNormalizedFloat());
 
-    public static Material GetElementMaterial(this BimGeometry self, int elementIndex)
+    public static Material GetInstanceMaterial(this BimGeometry self, int elementIndex)
         => self.GetMaterial(self.InstanceMaterialIndex[elementIndex]);
 
-    public static Matrix4x4 GetElementMatrix(this BimGeometry self, int elementIndex)
+    public static Matrix4x4 GetInstanceMatrix(this BimGeometry self, int elementIndex)
         => new(self.GetTransformMatrix(self.InstanceTransformIndex[elementIndex]));
 
     public static Matrix4x4 GetTranslationMatrix(this BimGeometry self, int i)
@@ -122,8 +122,57 @@ public static class BimGeometryExtensions
     public static Model3D ToModel3D(this BimGeometry self)
     {
         var meshes = self.GetNumMeshes().MapRange(i => self.GetMesh(i)).ToList();
-        var instances = self.GetNumElements().MapRange(i => self.GetInstanceStruct(i)).ToList();
+        var instances = self.GetNumInstances().MapRange(i => self.GetInstanceStruct(i)).ToList();
         return new Model3D(meshes, instances);
+    }
+
+    public static MeshSliceStruct GetMeshSlice(this BimGeometry self, int i)
+    {
+        var currVertex = self.MeshVertexOffset[i];
+        var currIndex = self.MeshIndexOffset[i];
+        var nextVertex = i < self.GetNumMeshes() - 1 ? self.MeshVertexOffset[i + 1] : self.GetNumVertices();
+        var nextIndex = i < self.GetNumMeshes() - 1 ? self.MeshIndexOffset[i + 1] : self.GetNumIndices();
+        var indexCount = nextIndex - currIndex;
+        var vertexCount = nextVertex - currVertex;
+        return new MeshSliceStruct()
+            { BaseVertex = currVertex, FirstIndex = (uint)currIndex, IndexCount = (uint)indexCount, VertexCount = vertexCount };
+    }
+
+    public static RenderModelData ToRenderModelData(this BimGeometry self)
+        => CopyToRenderModelData(self, new RenderModelData(3));
+
+    public static RenderModelData CopyToRenderModelData(this BimGeometry self, RenderModelData data)
+    {
+        data.VertexBuffer.SetCount(self.GetNumVertices() * 3);
+        for (int i = 0, n = self.GetNumVertices(); i < n; i++)
+        {
+            data.VertexBuffer[i * 3] = self.VertexX[i] /  BimGeometry.VertexMultiplier;
+            data.VertexBuffer[i * 3 + 1] = self.VertexY[i] / BimGeometry.VertexMultiplier;
+            data.VertexBuffer[i * 3 + 2] = self.VertexZ[i] / BimGeometry.VertexMultiplier;
+        }
+
+        data.IndexBuffer.SetCount(self.GetNumIndices());
+        for (int i = 0, n = self.GetNumIndices(); i < n; i++)
+        {
+            data.IndexBuffer[i] = (uint)self.IndexBuffer[i];
+        }
+
+        data.InstanceBuffer.SetCount(self.GetNumInstances());
+        for (int i = 0, n = self.GetNumInstances(); i < n; i++)
+        {
+            data.InstanceBuffer[i] = GetInstanceStruct(self, i);
+        }
+
+        data.MeshBuffer.SetCount(self.GetNumMeshes());
+        for (int i = 0, n = self.GetNumMeshes(); i < n; i++)
+        {
+            data.MeshBuffer[i] = GetMeshSlice(self, i);
+        }
+
+        data.ValidateMeshSlices();
+        data.RecomputeBounds();
+
+        return data;
     }
 
     public static DataTableBuilder AddColumn<T>(this DataTableBuilder self, BimGeometry model, T[] data, string name)

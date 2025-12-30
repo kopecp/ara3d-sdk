@@ -34,7 +34,7 @@ namespace Ara3D.BimOpenSchema
             
             if (Entities.Count > 0)
             {
-                var numElements = Geometry.GetNumElements();
+                var numElements = Geometry.GetNumInstances();
                 for (var i = 0; i < numElements; i++)
                 {
                     var inst = Geometry.GetInstanceStruct(i);
@@ -137,9 +137,9 @@ namespace Ara3D.BimOpenSchema
         public string AssemblyName => GetParameterAsEntity(CommonRevitParameters.ElementAssemblyInstance)?.Index.ToString();
         public int WorksetId => GetParameterAsInt(CommonRevitParameters.ElementWorksetId);
         public float Elevation => GetParameterAsEntity(CommonRevitParameters.ElementLevel)?.GetParameterAsNumber(CommonRevitParameters.LevelElevation) ?? 0;
- 
+        public string Type => GetEntityModel(Entity.Type)?.Name;
+
         // Family instance parameters
-        public string FamilyType => GetParameterAsEntity(CommonRevitParameters.FIFamilyType)?.Name;
         public string RoomName => GetParameterAsEntity(CommonRevitParameters.FISpace)?.Name;
 
         public EntityModel(BimObjectModel model, EntityIndex ei)

@@ -49,8 +49,8 @@ namespace Ara3D.Memory
         public static FixedArray<T> Fix<T>(this T[] self) where T : unmanaged
             => new(self);
 
-        public static MemoryOwner<T> Reinterpret<T>(this IMemoryOwner self) where T : unmanaged
-            => new(self);
+        public static Buffer<T1> Reinterpret<T0, T1>(this IBuffer<T0> self) where T0 : unmanaged where T1 : unmanaged
+            => new(self.Bytes);
 
         public static long ElementSize(this IBuffer buffer) 
             => Marshal.SizeOf(buffer.ElementType());

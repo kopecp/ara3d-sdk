@@ -2,7 +2,6 @@
 using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Document = Autodesk.Revit.DB.Document;
 using Material = Ara3D.Models.Material;
 
@@ -110,10 +109,9 @@ public class BosMeshGatherer
 
     public void ProcessInstanceWithCaching(GeometryInstance gi, Transform worldFromParent, List<GeometryPart> parts)
     {
-        var templates = GetOrBuildSymbolTemplates(gi, worldFromParent);
+        var templates = GetOrBuildSymbolTemplates(gi);
 
-        var worldFromSymbol = worldFromParent
-            .Multiply(gi.Transform);
+        var worldFromSymbol = worldFromParent.Multiply(gi.Transform);
 
         foreach (var template in templates)
         {
@@ -125,7 +123,7 @@ public class BosMeshGatherer
     public string GetSymbolCacheKey(SymbolGeometryId symbolId)
         => symbolId?.AsUniqueIdentifier();
 
-    private IReadOnlyList<GeometryPart> GetOrBuildSymbolTemplates(GeometryInstance gi, Transform worldFromParent)
+    private IReadOnlyList<GeometryPart> GetOrBuildSymbolTemplates(GeometryInstance gi)
     {
         if (gi == null) return [];
 

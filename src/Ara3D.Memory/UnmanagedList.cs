@@ -123,11 +123,11 @@ namespace Ara3D.Memory
             _pointer = null;
             Count = 0;
         }
-
+        
         /// <summary>
-        /// Casting a memory owner, effectively transfers ownership to a new memory owner block. 
+        /// Converts a memory owner, transferring ownership to a new memory owner block. 
         /// </summary>
-        public IMemoryOwner<T1> Cast<T1>() where T1 : unmanaged
+        public IMemoryOwner<T1> Convert<T1>() where T1 : unmanaged
         {
             if (this is IMemoryOwner<T1> same)
                 return same;
@@ -186,6 +186,13 @@ namespace Ara3D.Memory
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CopyFrom(IBuffer<T> other)
+        {
+            Clear();
+            AddRange(other);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CopyFrom(IReadOnlyList<T> other)
         {
             Clear();
             AddRange(other);

@@ -41,6 +41,7 @@
             richTextBox1 = new System.Windows.Forms.RichTextBox();
             label2 = new System.Windows.Forms.Label();
             buttonLaunchWindowsExplorer = new System.Windows.Forms.Button();
+            comboBoxLod = new System.Windows.Forms.ComboBox();
             SuspendLayout();
             // 
             // exportDirTextBox
@@ -48,7 +49,7 @@
             exportDirTextBox.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             exportDirTextBox.Location = new System.Drawing.Point(11, 43);
             exportDirTextBox.Name = "exportDirTextBox";
-            exportDirTextBox.Size = new System.Drawing.Size(761, 31);
+            exportDirTextBox.Size = new System.Drawing.Size(917, 31);
             exportDirTextBox.TabIndex = 1;
             // 
             // label1
@@ -63,7 +64,7 @@
             // chooseFolderButton
             // 
             chooseFolderButton.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
-            chooseFolderButton.Location = new System.Drawing.Point(559, 98);
+            chooseFolderButton.Location = new System.Drawing.Point(715, 98);
             chooseFolderButton.Name = "chooseFolderButton";
             chooseFolderButton.Size = new System.Drawing.Size(214, 45);
             chooseFolderButton.TabIndex = 3;
@@ -74,9 +75,9 @@
             // linkLabel1
             // 
             linkLabel1.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            linkLabel1.Location = new System.Drawing.Point(114, 598);
+            linkLabel1.Location = new System.Drawing.Point(114, 604);
             linkLabel1.Name = "linkLabel1";
-            linkLabel1.Size = new System.Drawing.Size(550, 25);
+            linkLabel1.Size = new System.Drawing.Size(706, 25);
             linkLabel1.TabIndex = 6;
             linkLabel1.TabStop = true;
             linkLabel1.Text = "https://github.com/ara3d/bim-open-schema";
@@ -87,10 +88,10 @@
             // 
             buttonExport.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             buttonExport.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
-            buttonExport.Location = new System.Drawing.Point(11, 173);
+            buttonExport.Location = new System.Drawing.Point(17, 184);
             buttonExport.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             buttonExport.Name = "buttonExport";
-            buttonExport.Size = new System.Drawing.Size(759, 55);
+            buttonExport.Size = new System.Drawing.Size(915, 55);
             buttonExport.TabIndex = 8;
             buttonExport.Text = "Run Export";
             buttonExport.UseVisualStyleBackColor = true;
@@ -124,10 +125,10 @@
             // 
             buttonLuanchBOSExplorer.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             buttonLuanchBOSExplorer.Font = new System.Drawing.Font("Segoe UI", 9F);
-            buttonLuanchBOSExplorer.Location = new System.Drawing.Point(61, 533);
+            buttonLuanchBOSExplorer.Location = new System.Drawing.Point(61, 539);
             buttonLuanchBOSExplorer.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             buttonLuanchBOSExplorer.Name = "buttonLuanchBOSExplorer";
-            buttonLuanchBOSExplorer.Size = new System.Drawing.Size(669, 43);
+            buttonLuanchBOSExplorer.Size = new System.Drawing.Size(825, 43);
             buttonLuanchBOSExplorer.TabIndex = 12;
             buttonLuanchBOSExplorer.Text = "Launch BIM Open Schema Explorer";
             buttonLuanchBOSExplorer.UseVisualStyleBackColor = true;
@@ -136,9 +137,9 @@
             // richTextBox1
             // 
             richTextBox1.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            richTextBox1.Location = new System.Drawing.Point(11, 282);
+            richTextBox1.Location = new System.Drawing.Point(11, 289);
             richTextBox1.Name = "richTextBox1";
-            richTextBox1.Size = new System.Drawing.Size(758, 189);
+            richTextBox1.Size = new System.Drawing.Size(914, 188);
             richTextBox1.TabIndex = 13;
             richTextBox1.Text = "";
             richTextBox1.TextChanged += richTextBox1_TextChanged;
@@ -146,7 +147,7 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new System.Drawing.Point(11, 245);
+            label2.Location = new System.Drawing.Point(11, 261);
             label2.Name = "label2";
             label2.Size = new System.Drawing.Size(46, 25);
             label2.TabIndex = 14;
@@ -156,20 +157,31 @@
             // 
             buttonLaunchWindowsExplorer.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             buttonLaunchWindowsExplorer.Font = new System.Drawing.Font("Segoe UI", 9F);
-            buttonLaunchWindowsExplorer.Location = new System.Drawing.Point(61, 482);
+            buttonLaunchWindowsExplorer.Location = new System.Drawing.Point(61, 488);
             buttonLaunchWindowsExplorer.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             buttonLaunchWindowsExplorer.Name = "buttonLaunchWindowsExplorer";
-            buttonLaunchWindowsExplorer.Size = new System.Drawing.Size(669, 45);
+            buttonLaunchWindowsExplorer.Size = new System.Drawing.Size(825, 45);
             buttonLaunchWindowsExplorer.TabIndex = 15;
             buttonLaunchWindowsExplorer.Text = "Launch Windows Explorer";
             buttonLaunchWindowsExplorer.UseVisualStyleBackColor = true;
             buttonLaunchWindowsExplorer.Click += buttonLaunchWindowsExplorer_Click;
             // 
+            // comboBoxLod
+            // 
+            comboBoxLod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            comboBoxLod.FormattingEnabled = true;
+            comboBoxLod.Items.AddRange(new object[] { "Coarse Detail", "Medium Detail", "Fine Detail" });
+            comboBoxLod.Location = new System.Drawing.Point(199, 133);
+            comboBoxLod.Name = "comboBoxLod";
+            comboBoxLod.Size = new System.Drawing.Size(269, 33);
+            comboBoxLod.TabIndex = 16;
+            // 
             // BIMOpenSchemaExporterForm
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(789, 638);
+            ClientSize = new System.Drawing.Size(945, 644);
+            Controls.Add(comboBoxLod);
             Controls.Add(buttonLaunchWindowsExplorer);
             Controls.Add(label2);
             Controls.Add(richTextBox1);
@@ -202,5 +214,6 @@
         private System.Windows.Forms.RichTextBox richTextBox1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button buttonLaunchWindowsExplorer;
+        private System.Windows.Forms.ComboBox comboBoxLod;
     }
 }

@@ -11,20 +11,20 @@ public static class RenderModelBfastSerializer
 {
     public static string[] BufferNames = new[]
     {
-        nameof(RenderModelData.Vertices),
-        nameof(RenderModelData.FaceIndices),
-        nameof(RenderModelData.MeshSlices),
-        nameof(RenderModelData.Instances),
+        nameof(RenderModelData.VertexBuffer),
+        nameof(RenderModelData.IndexBuffer),
+        nameof(RenderModelData.MeshBuffer),
+        nameof(RenderModelData.InstanceBuffer),
     };
 
     public static unsafe void Save(RenderModelData renderModelData, FilePath filePath)
     {
         var sizes = new[]
         {
-            renderModelData.Vertices.Bytes.Count,
-            renderModelData.FaceIndices.Bytes.Count,
-            renderModelData.MeshSlices.Bytes.Count,
-            renderModelData.Instances.Bytes.Count,
+            renderModelData.VertexBuffer.Bytes.Count,
+            renderModelData.IndexBuffer.Bytes.Count,
+            renderModelData.MeshBuffer.Bytes.Count,
+            renderModelData.InstanceBuffer.Bytes.Count,
         };
 
         Debug.Assert(sizes[0] % sizeof(Point3D) == 0);
@@ -34,10 +34,10 @@ public static class RenderModelBfastSerializer
 
         var ptrs = new[]             
         {
-            renderModelData.Vertices.Bytes.Ptr,
-            renderModelData.FaceIndices.Bytes.Ptr,
-            renderModelData.MeshSlices.Bytes.Ptr,
-            renderModelData.Instances.Bytes.Ptr,
+            renderModelData.VertexBuffer.Bytes.Ptr,
+            renderModelData.IndexBuffer.Bytes.Ptr,
+            renderModelData.MeshBuffer.Bytes.Ptr,
+            renderModelData.InstanceBuffer.Bytes.Ptr,
         };
 
         long OnBuffer(Stream stream, int index, string name, long bytesToWrite)
@@ -70,7 +70,7 @@ public static class RenderModelBfastSerializer
 
     public static unsafe RenderModelData Load(FilePath fp)
     {
-        var r = new RenderModelData();
+        var r = new RenderModelData(3);
 
         void OnView(string name, MemoryMappedView view, int index)
         {
@@ -83,16 +83,16 @@ public static class RenderModelBfastSerializer
                 switch (index)
                 {
                     case 0: 
-                        r.Vertices.AddRange(srcPointer, view.Size); 
+                        r.VertexBuffer.AddRange(srcPointer, view.Size); 
                         break;
                     case 1: 
-                        r.FaceIndices.AddRange(srcPointer, view.Size); 
+                        r.IndexBuffer.AddRange(srcPointer, view.Size); 
                         break;
                     case 2: 
-                        r.MeshSlices.AddRange(srcPointer, view.Size); 
+                        r.MeshBuffer.AddRange(srcPointer, view.Size); 
                         break;
                     case 3: 
-                        r.Instances.AddRange(srcPointer, view.Size); 
+                        r.InstanceBuffer.AddRange(srcPointer, view.Size); 
                         break;
                     default: 
                         throw new Exception($"Unrecognized memory buffer: {name} at position {index}");

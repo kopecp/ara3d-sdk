@@ -16,7 +16,7 @@ namespace Ara3D.BIMOpenSchema.Revit2025
         {
             InitializeComponent();
             buttonLuanchBOSExplorer.Enabled = OpenSchemaApp.BrowserAppPath.Exists();
-
+            comboBoxLod.SelectedIndex = 2;
             var defaultExportDir = DefaultFolder;
             try
             {
@@ -80,7 +80,11 @@ namespace Ara3D.BIMOpenSchema.Revit2025
             {
                 Folder = GetCurrentExportFolder(),
                 IncludeLinks = checkBoxIncludeLinks.Checked,
-                IncludeGeometry = checkBoxMeshGeometry.Checked
+                IncludeGeometry = checkBoxMeshGeometry.Checked,
+                DetailLevel = comboBoxLod.SelectedIndex == 0 ? BimOpenSchemaExportSettings.DetailLevelEnum.Coarse
+                    : comboBoxLod.SelectedIndex == 1 ? BimOpenSchemaExportSettings.DetailLevelEnum.Medium 
+                    : BimOpenSchemaExportSettings.DetailLevelEnum.Fine
+
             };
 
         public DirectoryPath CurrentDocumentDir

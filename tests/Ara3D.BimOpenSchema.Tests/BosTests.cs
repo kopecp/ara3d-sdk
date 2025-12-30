@@ -82,7 +82,7 @@ public static class BosTests
     {
         logger.Log($"# transforms = {bimGeometry.GetNumTransforms()}");
         logger.Log($"# meshes = {bimGeometry.GetNumMeshes()}");
-        logger.Log($"# elements = {bimGeometry.GetNumElements()}");
+        logger.Log($"# elements = {bimGeometry.GetNumInstances()}");
         logger.Log($"# faces = {bimGeometry.GetNumFaces()}");
         logger.Log($"# vertices = {bimGeometry.GetNumVertices()}");
         logger.Log($"# materials = {bimGeometry.GetNumMaterials()}");

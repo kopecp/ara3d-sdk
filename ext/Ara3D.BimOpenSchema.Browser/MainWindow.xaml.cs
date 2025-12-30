@@ -20,6 +20,7 @@ namespace Ara3D.BimOpenSchema.Browser
     {
         public BimData Data;
         public BimModel3D Model3D;
+        public Model3D ToModel3D() => Model3D.RenderModelData.ToModel3D();
         public BimObjectModel ObjectModel => Model3D.ObjectModel;
         public IReadOnlyList<IDataTable> Tables;
         public Grouping CurrentGrouping = Grouping.None;
@@ -30,15 +31,16 @@ namespace Ara3D.BimOpenSchema.Browser
 
         public enum Grouping
         {
+            AlphaName,
             None,
             Document,
-            //CategoryType,
             Level,
             Group,
             Room,
             Class,
             Category,
-            FamilyType, 
+            CategoryType,
+            Type, 
         }
 
         public MainWindow()
@@ -70,7 +72,7 @@ namespace Ara3D.BimOpenSchema.Browser
         public static void SaveToGltf(BimModel3D model, FilePath filePath)
         {
             var builder = new GltfBuilder();
-            builder.SetModel(model.Model3D);
+            builder.SetModel(model.RenderModelData.ToModel3D());
             var bytes = new List<byte>();
             var data = builder.Build(bytes);
             data.Export(bytes, filePath);
@@ -150,8 +152,12 @@ namespace Ara3D.BimOpenSchema.Browser
             {
                 case Grouping.None:
                     return ObjectModel.Entities.GroupBy(_ => "All");
+                case Grouping.AlphaName:
+                    return ObjectModel.Entities.GroupBy(e => e.Name.IsNullOrEmpty() ? " " : e.Name[0].ToString());
                 case Grouping.Category:
                     return ObjectModel.Entities.GroupBy(e => e.Category);
+                case Grouping.CategoryType:
+                    return ObjectModel.Entities.GroupBy(e => e.CategoryType);
                 case Grouping.Level:
                     return ObjectModel.Entities.GroupBy(e => e.LevelName);
                 case Grouping.Group:
@@ -162,8 +168,8 @@ namespace Ara3D.BimOpenSchema.Browser
                     return ObjectModel.Entities.GroupBy(e => e.RoomName);
                 case Grouping.Document:
                     return ObjectModel.Entities.GroupBy(e => e.DocumentTitle);
-                case Grouping.FamilyType:
-                    return ObjectModel.Entities.GroupBy(e => e.FamilyType);
+                case Grouping.Type:
+                    return ObjectModel.Entities.GroupBy(e => e.Type);
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -231,7 +237,7 @@ namespace Ara3D.BimOpenSchema.Browser
         public void SaveGltf(IEnumerable<EntityModel> entities, FilePath fp)
         {
             var entityIndices = entities.Select(em => (int)em.Index).ToHashSet();
-            var newModel = Model3D.Model3D.FilterAndRemoveUnusedMeshes(i => entityIndices.Contains(i.EntityIndex));
+            var newModel = Model3D.RenderModelData.ToModel3D().FilterAndRemoveUnusedMeshes(i => entityIndices.Contains(i.EntityIndex));
             if (newModel.Instances.Count > 0 && newModel.Meshes.Count > 0)
                 newModel.WriteGlb(fp);
         }

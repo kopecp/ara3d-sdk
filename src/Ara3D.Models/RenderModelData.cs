@@ -1,70 +1,114 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
+using Ara3D.Collections;
+using Ara3D.F8;
 using Ara3D.Geometry;
 using Ara3D.Memory;
+using SNVector3 = System.Numerics.Vector3;
 
 namespace Ara3D.Models;
 
 /// <summary>
-/// This is a long-lived data structure that contains the data used for rendering.
+/// This is a long-lived data structure that contains the memory data buffers that contain
+/// the data for rendering models. It minimizes reallocation. Memory is unmanaged, and not
+/// touched by the garbage collector. This is also the data structure used when storing loaded data.
+/// All meshes in this structure must have the same PrimitiveKind (e.g., all Lines or all Triangles)
 /// </summary>
-public class RenderModelData
-    : IModel3D
+public class RenderModelData : IDisposable
 {
-    public UnmanagedList<Point3D> Vertices { get; private set; } = new();
-    public UnmanagedList<Integer3> FaceIndices { get; private set; } = new();
-    public UnmanagedList<MeshSliceStruct> MeshSlices { get; private set; } = new();
-    public UnmanagedList<InstanceStruct> Instances { get; private set; } = new();
+    public int PrimitiveSize { get; }
+    public Bounds3D TotalBounds { get; private set; }
+    
+    public UnmanagedList<float> VertexBuffer { get; private set; }
+    public UnmanagedList<uint> IndexBuffer { get; private set; }
+    public UnmanagedList<MeshSliceStruct> MeshBuffer { get; private set; }
+    public UnmanagedList<InstanceStruct> InstanceBuffer { get; private set; } 
+    public UnmanagedList<Bounds3D> MeshBounds { get; private set; }
+    
+    public long TotalVertexCount { get; private set; }
+    public long TotalFaceCount { get; private set; }
 
-    public IReadOnlyList<TriangleMesh3D> Meshes
+    public int VertexCount => VertexBuffer.Count;
+    public int FaceCount => IndexBuffer.Count / PrimitiveSize;
+    public int MeshCount => MeshBuffer.Count;
+    public int InstanceCount => InstanceBuffer.Count;
+
+    public RenderModelData(int primSize)
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => MeshSlices.Map(ToMesh); 
+        if (primSize < 1 || primSize > 4)
+            throw new Exception($"Render model data primitive size ({primSize}) must be from 1 to 4 inclusive");
+
+        PrimitiveSize = primSize;
+        VertexBuffer = new();
+        IndexBuffer = new();
+        MeshBuffer = new();
+        InstanceBuffer = new();
+        MeshBounds = new();
     }
+    
+    public bool IsModel3D
+        => PrimitiveSize == 3;
 
-    IReadOnlyList<InstanceStruct> IModel3D.Instances
+    public Model3D ToModel3D()
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Instances;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TriangleMesh3D ToMesh(MeshSliceStruct slice)
-    {
-        var pointSlice = Vertices.Slice(slice.BaseVertex, slice.VertexCount);
-        var faceSlice = FaceIndices.Slice(slice.FirstIndex * 3, slice.IndexCount / 3);
-        return new TriangleMesh3D(pointSlice, faceSlice);
+        if (PrimitiveSize != 3) throw new Exception("Not a triangle mesh");
+        var meshes = MeshBuffer.Select(GetMesh);
+        return new Model3D(meshes, InstanceBuffer);
     }
 
     public void Dispose()
     {
-        Vertices?.Dispose();
-        FaceIndices?.Dispose();
-        MeshSlices?.Dispose();
-        Instances?.Dispose();
-        Vertices = null;
-        FaceIndices = null;
-        MeshSlices = null;
-        Instances = null;
+        VertexBuffer?.Dispose();
+        IndexBuffer?.Dispose();
+        MeshBuffer?.Dispose();
+        InstanceBuffer?.Dispose();
+        VertexBuffer = null;
+        IndexBuffer = null;
+        MeshBuffer = null;
+        InstanceBuffer = null;
     }
-
-    public IModel3D Transform(Transform3D t)
-        => Model3DExtensions.Transform(this, t);
-
-    public void Update(IBuffer<Point3D> vertices, IBuffer<Integer3> indices, IBuffer<MeshSliceStruct> meshSlices,
+    
+    public void Update(
+        IBuffer<float> vertexBuffer, 
+        IBuffer<uint> indexBuffer, 
+        IBuffer<MeshSliceStruct> meshSlices,
         IBuffer<InstanceStruct> instances)
     {
-        Vertices.CopyFrom(vertices);
-        FaceIndices.CopyFrom(indices);
-        MeshSlices.CopyFrom(meshSlices);
-        Instances.CopyFrom(instances);
+        VertexBuffer.CopyFrom(vertexBuffer);
+        IndexBuffer.CopyFrom(indexBuffer);
+        MeshBuffer.CopyFrom(meshSlices);
+        InstanceBuffer.CopyFrom(instances);
+    }
+
+    public void UpdateVertexBuffer(IBuffer<float> vertexBuffer) => VertexBuffer.CopyFrom(vertexBuffer);
+    public void UpdateIndexBuffer(IBuffer<uint> indexBuffer) => IndexBuffer.CopyFrom(indexBuffer);
+    public void UpdateMeshBuffer(IBuffer<MeshSliceStruct> meshBuffer) => MeshBuffer.CopyFrom(meshBuffer);
+    public void UpdateInstanceBuffer(IBuffer<InstanceStruct> instanceBuffer) => InstanceBuffer.CopyFrom(instanceBuffer);
+
+    public void UpdateVertexBuffer(IReadOnlyList<float> vertexBuffer) => VertexBuffer.CopyFrom(vertexBuffer);
+    public void UpdateIndexBuffer(IReadOnlyList<uint> indexBuffer) => IndexBuffer.CopyFrom(indexBuffer);
+    public void UpdateMeshBuffer(IReadOnlyList<MeshSliceStruct> meshBuffer) => MeshBuffer.CopyFrom(meshBuffer);
+    public void UpdateInstanceBuffer(IReadOnlyList<InstanceStruct> instanceBuffer) => InstanceBuffer.CopyFrom(instanceBuffer);
+
+    public void Update(RenderModelData data)
+    {
+        UpdateVertexBuffer(data.VertexBuffer);
+        UpdateIndexBuffer(data.IndexBuffer);
+        UpdateMeshBuffer(data.MeshBuffer);
+        UpdateInstanceBuffer(data.InstanceBuffer);
+        ValidateMeshSlices();
+        MeshBounds.Clear();
+        MeshBounds.AddRange(data.MeshBounds);
     }
 
     public void Update(IModel3D model)
     {
-        Vertices.Clear();
-        FaceIndices.Clear();
-        MeshSlices.Clear();
-        Instances.Clear();
+        if (!IsModel3D)
+            throw new Exception("Not a model 3D");
+
+        VertexBuffer.Clear();
+        IndexBuffer.Clear();
+        MeshBuffer.Clear();
+        InstanceBuffer.Clear();
 
         foreach (var mesh in model.Meshes)
         {
@@ -73,17 +117,95 @@ public class RenderModelData
 
             var meshSlice = new MeshSliceStruct()
             {
-                FirstIndex = (uint)FaceIndices.Count * 3,
-                IndexCount = (uint)faceIndices.Count * 3,
-                BaseVertex = (int)Vertices.Count,
+                FirstIndex = (uint)IndexBuffer.Count,
+                IndexCount = (uint)faceIndices.Count * (uint)PrimitiveSize,
+                BaseVertex = VertexBuffer.Count / PrimitiveSize,
                 VertexCount = points.Count
             };
 
-            MeshSlices.Add(meshSlice);
-            Vertices.AddRange(points);
-            FaceIndices.AddRange(faceIndices);
+            MeshBuffer.Add(meshSlice);
+
+            // TODO: optimization opportunity 
+
+            foreach (var point3D in points)
+            {
+                VertexBuffer.Add(point3D.X);
+                VertexBuffer.Add(point3D.Y);
+                VertexBuffer.Add(point3D.Z);
+            }
+
+            foreach (var index3 in faceIndices)
+            {
+                IndexBuffer.Add((uint)index3.A.Value);
+                IndexBuffer.Add((uint)index3.B.Value);
+                IndexBuffer.Add((uint)index3.C.Value);
+            }
         }
 
-        Instances.AddRange(model.Instances);
+        InstanceBuffer.AddRange(model.Instances);
+        ValidateMeshSlices();
+        RecomputeBounds();
     }
+
+
+    public void ValidateMeshSlices()
+    {
+#if DEBUG
+        for (var i = 0; i < MeshBuffer.Count; i++)
+        {
+            var meshSlice = MeshBuffer[i];
+            Debug.Assert(meshSlice.BaseVertex >= 0);
+            Debug.Assert(meshSlice.VertexCount + meshSlice.BaseVertex <= VertexBuffer.Count);
+            //Debug.Assert(meshSlice.FirstIndex >= 0);
+            Debug.Assert(meshSlice.FirstIndex + meshSlice.IndexCount <= IndexBuffer.Count);
+        }
+#endif
+    }
+
+    public Bounds3D ComputeBounds(IBuffer<Point3D> points)
+    {
+        var span = points.Reinterpret<SNVector3>().AsReadOnlySpan();
+        var (min, max) = span.ComputeBounds();
+        return new(new Vector3(min), new Vector3(max));
+    }
+
+    public void RecomputeBounds()
+    {
+        MeshBounds.Clear();
+        foreach (var meshSlice in MeshBuffer)
+        {
+            var points = GetPoints(meshSlice);
+            var bounds = ComputeBounds(points);
+            MeshBounds.Add(bounds);
+        }
+
+        TotalBounds = Bounds3D.Empty;
+        TotalFaceCount = 0;
+        TotalVertexCount = 0;
+        foreach (var inst in InstanceBuffer)
+        {
+            if (inst.MeshIndex < 0) 
+                continue;
+            var localMeshSlice = MeshBuffer[inst.MeshIndex];
+            var localBounds = MeshBounds[inst.MeshIndex];
+            TotalFaceCount += localMeshSlice.IndexCount / PrimitiveSize;
+            TotalVertexCount += localMeshSlice.VertexCount;
+            if (localBounds.Size.X < 0 || localBounds.Size.Y < 0 || localBounds.Size.Z < 0)
+                continue;
+            var transformedBounds = localBounds.Transform(inst.Matrix4x4);
+            TotalBounds = TotalBounds.Include(transformedBounds);
+        }
+    }
+
+    public TriangleMesh3D GetMesh(MeshSliceStruct meshSlice)
+    {
+        if (PrimitiveSize != 3)
+            throw new Exception($"Primitive size must be 3 to get a triangle mesh instead it is {PrimitiveSize}");
+
+        var faceSlice = IndexBuffer.Slice(meshSlice.FirstIndex, meshSlice.IndexCount).Reinterpret<Integer3>();
+        return new(GetPoints(meshSlice), faceSlice);
+    }
+
+    public IBuffer<Point3D> GetPoints(MeshSliceStruct meshSlice)
+        => BufferExtensions.Slice(VertexBuffer?.Reinterpret<Point3D>(), meshSlice.BaseVertex, meshSlice.VertexCount);
 }

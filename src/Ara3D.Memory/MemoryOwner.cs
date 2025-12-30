@@ -45,7 +45,6 @@ public unsafe class MemoryOwner<T> : IMemoryOwner<T>
         get => Buffer.Count; 
     }
 
-
     public ref T this[int index]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -78,7 +77,7 @@ public unsafe class MemoryOwner<T> : IMemoryOwner<T>
     IEnumerator IEnumerable.GetEnumerator()
         => ((IEnumerable)Buffer).GetEnumerator();
 
-    public IMemoryOwner<T1> Cast<T1>()
+    public IMemoryOwner<T1> Convert<T1>()
         where T1 : unmanaged
     {
         var r = new MemoryOwner<T1>(Memory);
