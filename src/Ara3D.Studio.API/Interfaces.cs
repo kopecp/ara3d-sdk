@@ -1,4 +1,5 @@
-﻿using Ara3D.Logging;
+﻿using Ara3D.Geometry;
+using Ara3D.Logging;
 using Ara3D.Models;
 using Ara3D.Utils;
 
@@ -35,6 +36,14 @@ public interface IModelAsset : IAsset
 }
 
 /// <summary>
+/// An asset that contains a LineMesh3D, which is a collection of lines.
+/// </summary>
+public interface ILineMeshAsset : IAsset
+{
+    LineMesh3D Lines { get; }
+}
+
+/// <summary>
 /// This is an object that can appear in a graph and represents a loaded asset. 
 /// </summary>
 public interface IAssetSource : IDisposable
@@ -52,11 +61,25 @@ public interface ILoader : IScriptedComponent
 }
 
 /// <summary>
+/// A script that generates objects
+/// </summary>
+public interface IGenerator : IScriptedComponent
+{ }
+
+/// <summary>
 /// A script that generates 3D models  
 /// </summary>
-public interface IModelGenerator : IScriptedComponent
+public interface IModelGenerator : IGenerator
 {
     IModel3D Eval(EvalContext context);
+}
+
+/// <summary>
+/// A script that generates line meshes
+/// </summary>
+public interface ILineMeshGenerator : IGenerator
+{
+    LineMesh3D Eval(EvalContext context);
 }
 
 /// <summary>
