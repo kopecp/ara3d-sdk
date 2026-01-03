@@ -14,9 +14,6 @@ public class BosDocumentContext
     public readonly Document Document;
     public readonly BosDocumentContext Parent;
     public readonly RevitLinkInstance LinkInstance;
-    public readonly List<long> ElementIds = [];
-    public readonly HashSet<long> TypeIds = [];
-    public readonly Dictionary<long, EntityIndex> ElementToEntityIndex = new();
     public readonly bool IsLink;
     public readonly string LinkName = "";
     public readonly string Path = "";
@@ -24,9 +21,11 @@ public class BosDocumentContext
     public readonly string Title = "";
     public readonly bool IsDetached;
     public readonly Transform Transform;
+    public readonly BosRevitBuilder RevitBuilder;
 
-    public BosDocumentContext(Document document, BosDocumentContext parent = null, RevitLinkInstance rli = null)
+    public BosDocumentContext(BosRevitBuilder revitBuilder, Document document, BosDocumentContext parent = null, RevitLinkInstance rli = null)
     {
+        RevitBuilder = revitBuilder;
         if (rli == null || parent == null)
             if (rli != null || parent != null)
                 throw new Exception("If either the RevitLinkInstance is null or the parent is null, both must be null");
@@ -55,10 +54,10 @@ public class BosDocumentContext
             ? "" : ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath) ?? "";
     }
 
-    public static BosDocumentContext Create(BosDocumentContext parent, RevitLinkInstance rli)
+    public BosDocumentContext Create(BosDocumentContext parent, RevitLinkInstance rli)
     {
         var linkDocument = rli.GetLinkDocument();
-        return linkDocument != null ? new BosDocumentContext(linkDocument, parent, rli) : null;
+        return linkDocument != null ? new BosDocumentContext(RevitBuilder, linkDocument, parent, rli) : null;
     }
 
     public List<BosDocumentContext> GatherLinkedDocuments()
@@ -79,33 +78,6 @@ public class BosDocumentContext
         }
     }
 
-    public void RetrieveElementIds()
-    {
-        if (ElementIds.Count > 0)
-            throw new Exception("Elements already retrieved");
-        var ids = new FilteredElementCollector(Document).WhereElementIsNotElementType().ToElementIds();
-        foreach (var id in ids)
-        {
-            var val = id.Value;
-            ElementToEntityIndex.Add(val, (EntityIndex)ElementIds.Count);
-            ElementIds.Add(val);
-        }
-    
-        foreach (var id in ElementIds)
-        {
-            var e = Document.GetElement(new ElementId(id));
-            var typeId = e.GetTypeId();
-            if (typeId != ElementId.InvalidElementId)
-            {
-                var val = typeId.Value;
-                var index = ElementIds.Count + TypeIds.Count;
-                 if (!TypeIds.Add(val))
-                    continue;
-                ElementToEntityIndex.TryAdd(val, (EntityIndex)index);
-            }
-        }
-    }
-
     public string Key
         => $"{Path}-{Title}-{ExternalPath}";
 
@@ -114,14 +86,4 @@ public class BosDocumentContext
 
     public override bool Equals(object obj)
         => obj is BosDocumentContext de && Key == de.Key;
-
-    public IEnumerable<Element> GetElements()
-    {
-        foreach (var eid in ElementIds)
-        {
-            var e = Document.GetElement(new ElementId(eid));
-            if (e != null)
-                yield return e;
-        }
-    }
 }

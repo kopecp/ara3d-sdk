@@ -13,9 +13,18 @@ if "%~1"=="" (
 if /I "%~1"=="-clean" goto :clean
 
 :: -------- 3)  Normal install --------------------------------
+
+:: Run ilrepack tool (must have been previously installed using dotnet ) 
+REM pushd %1
+REM ilrepack /out:temp.dll /wildcards Ara3D.*.dll
+REM del Ara3D.*.dll 
+REM rename temp.dll Ara3D.Bowerbird.Revit2025.dll
+REM popd
+
 xcopy /Y %AddinName% "%AddinsDir%\2025"
 if not exist "%BowerbirdDir%" mkdir "%BowerbirdDir%"
 
+del /Q "%BowerbirdDir%\*"
 xcopy %1 "%BowerbirdDir%" /h /i /c /k /e /r /y
 
 echo Done.

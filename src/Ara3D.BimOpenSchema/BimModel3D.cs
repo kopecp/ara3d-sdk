@@ -11,7 +11,7 @@ public class BimModel3D
     {
         ObjectModel = model;
         RenderModelData = new RenderModelData(3);
-        
+        model.Geometry.CopyToRenderModelData(RenderModelData);
     }
 
     public RenderModelData RenderModelData { get; private set; }

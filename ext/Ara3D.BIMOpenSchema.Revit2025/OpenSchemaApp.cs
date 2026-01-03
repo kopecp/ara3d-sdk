@@ -83,6 +83,6 @@ namespace Ara3D.BIMOpenSchema.Revit2025
             => "Ara3D.BimOpenSchema.Browser.exe";
 
         public static FilePath Ara3dStudioExePath 
-            => SpecialFolders.LocalApplicationData.RelativeFile("Ara 3D", "Ara 3D Studio", "Ara3D.Studio.exe");
+            => SpecialFolders.LocalApplicationData.RelativeFile("Ara 3D", "Ara 3D Studio", "Ara3D.exe");
     }
 }

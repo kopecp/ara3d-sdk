@@ -15,7 +15,7 @@ namespace Ara3D.BIMOpenSchema.Revit2025
         public BIMOpenSchemaExporterForm()
         {
             InitializeComponent();
-            buttonLuanchBOSExplorer.Enabled = OpenSchemaApp.BrowserAppPath.Exists();
+            buttonLanchAra3D.Enabled = true;
             comboBoxLod.SelectedIndex = 2;
             var defaultExportDir = DefaultFolder;
             try
@@ -154,15 +154,15 @@ namespace Ara3D.BIMOpenSchema.Revit2025
             }
         }
 
-        private void buttonLaunchBosExplorer_Click(object sender, EventArgs e)
+        private void buttonLaunchAra3D_Click(object sender, EventArgs e)
         {
-            if (!OpenSchemaApp.BrowserAppPath.Exists())
-                MessageBox.Show("Could not find the browser application");
+            if (!OpenSchemaApp.Ara3dStudioExePath.Exists())
+                MessageBox.Show("Could not find Ara 3D Studio");
 
             if (CurrentFilePath.Exists())
-                OpenSchemaApp.BrowserAppPath.Execute(CurrentFilePath.Value.Quote());
+                OpenSchemaApp.Ara3dStudioExePath.Execute(CurrentFilePath.Value.Quote());
             else
-                OpenSchemaApp.BrowserAppPath.Execute();
+                OpenSchemaApp.Ara3dStudioExePath.Execute();
         }
 
         private void richTextBox1_TextChanged(object sender, EventArgs e)

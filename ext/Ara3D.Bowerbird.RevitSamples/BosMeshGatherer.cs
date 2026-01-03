@@ -59,9 +59,9 @@ public class BosMeshGatherer
     {
         try
         {
-            var material = e.ResolveFallbackMaterial();
             var geometryElement = e.get_Geometry(Options);
             if (geometryElement == null) return null;
+            var material = e.ResolveFallbackMaterial();
             var parts = new List<GeometryPart>();
             TraverseElementGeometry(geometryElement, transform, parts);
             if (parts.Count == 0) return null;

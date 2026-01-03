@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Ara3D.Logging;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 
 namespace Ara3D.Bowerbird.RevitSamples;
@@ -25,7 +26,8 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
         var logger = Logger.Create(sb);
 
         logger.Log("Creating central document with elements");
-        var docWithElements = new BosDocumentContext(doc);
+        // TODO: 
+        var docWithElements = new BosDocumentContext(null, doc);
 
         logger.Log("Gathering linked documents");
         var docs = docWithElements.GatherLinkedDocuments();
@@ -39,8 +41,6 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
             logger.Log($"External path = {d.ExternalPath}");
             logger.Log($"Is detached = {d.IsDetached}");
             logger.Log($"Retrieving element IDs");
-            d.RetrieveElementIds();
-            logger.Log($"Found {d.ElementIds.Count} element ids");
         }
 
         TextDisplayForm.DisplayText(sb.ToString());

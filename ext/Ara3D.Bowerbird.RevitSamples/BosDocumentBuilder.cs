@@ -45,9 +45,16 @@ public class BosDocumentBuilder
     public Dictionary<int, EntityIndex> ProcessedConnectors = new();
     public Dictionary<long, EntityIndex> ProcessedCategories = new();
     public Dictionary<string, DescriptorIndex> DescriptorLookup { get; }
+    public readonly Dictionary<long, EntityIndex> ElementToEntityIndex = new();
 
     public IEnumerable<Element> GetElements()
-        => DocumentContext.GetElements();
+        => DocumentContext.Document.GetElements();
+
+    public IEnumerable<ElementId> GetElementIds()
+        => DocumentContext.Document.GetElementIds();
+    
+    public EntityIndex GetElementIndex(ElementId id)
+        => ElementToEntityIndex.GetValueOrDefault(id.Value, InvalidEntity);
 
     public static (XYZ min, XYZ max)? GetBoundingBoxMinMax(Element element, View view = null)
     {
@@ -119,7 +126,7 @@ public class BosDocumentBuilder
     {
         if (eId != ElementId.InvalidElementId)
         {
-            var ei2 = GetElementIndex(eId);
+            var ei2 = ProcessElement(eId);
             AddParameter(ei, DescriptorLookup[p], ei2);
             DataBuilder.AddRelation(ei, ei2, rt);
         }
@@ -129,7 +136,7 @@ public class BosDocumentBuilder
     {
         if (e != null && e.IsValidObject)
         {
-            var ei2 = GetElementIndex(e.Id);
+            var ei2 = ProcessElement(e.Id);
             AddParameter(ei, DescriptorLookup[p], ei2);
             DataBuilder.AddRelation(ei, ei2, rt);
         }
@@ -138,13 +145,13 @@ public class BosDocumentBuilder
     public void AddParameter(EntityIndex ei, RevitParameterDesc p, ElementId eId)
     {
         if (eId != ElementId.InvalidElementId)
-            AddParameter(ei, DescriptorLookup[p], GetElementIndex(eId));
+            AddParameter(ei, DescriptorLookup[p], ProcessElement(eId));
     }
 
     public void AddParameter(EntityIndex ei, RevitParameterDesc p, Element e)
     {
         if (e != null && e.IsValidObject) 
-            AddParameter(ei, DescriptorLookup[p], GetElementIndex(e.Id));
+            AddParameter(ei, DescriptorLookup[p], ProcessElement(e.Id));
     }
 
     public void AddParameter(EntityIndex ei, RevitParameterDesc p, EntityIndex val)
@@ -211,6 +218,9 @@ public class BosDocumentBuilder
 
     public void AddDotNetTypeAsParameter(EntityIndex ei, string typeName)
         => AddParameter(ei, ObjectTypeName, typeName);
+
+    public void AddError(ElementId id, Exception ex)
+        => AddError(ElementToEntityIndex.GetValueOrDefault(id.Value, InvalidEntity), ex);
 
     public void AddError(EntityIndex ei, Exception ex)
         => DataBuilder.AddDiagnostic(DiagnosticType.ExporterError, ex.Message, DocumentIndex, ei);
@@ -348,7 +358,7 @@ public class BosDocumentBuilder
         var matIds = e.GetMaterialIds(false);
         foreach (var id in matIds)
         {
-            var matId = GetElementIndex(id);
+            var matId = ProcessElement(id);
             DataBuilder.AddRelation(ei, matId, RelationType.HasMaterial);
         }
     }
@@ -386,7 +396,7 @@ public class BosDocumentBuilder
                         AddParameter(entityIndex, DataBuilder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.String), p.AsString());
                         break;
                     case StorageType.ElementId:
-                        AddParameter(entityIndex, DataBuilder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.Entity), GetElementIndex(p.AsElementId()));
+                        AddParameter(entityIndex, DataBuilder.AddDescriptor(def.Name, unitLabel, groupLabel, ParameterType.Entity), ProcessElement(p.AsElementId()));
                         break;
                     case StorageType.None:
                     default:
@@ -399,9 +409,6 @@ public class BosDocumentBuilder
             }
         }
     }
-
-    public EntityIndex GetElementIndex(ElementId id)
-        => DocumentContext.ElementToEntityIndex.TryGetValue(id.Value, out var ei) ? ei : InvalidEntity;
 
     public static ConnectorManager TryGetConnectorManager(Element e)
     {
@@ -472,19 +479,26 @@ public class BosDocumentBuilder
         AddParameter(entityIndex, p, connectorEntityIndex);
     }
 
-    public EntityIndex ProcessNewElement(ElementId id)
+
+    public EntityIndex ProcessElement(ElementId id)
     {
         if (id == ElementId.InvalidElementId)
             return InvalidEntity;
+
+        var idVal = id.Value;
+        if (ElementToEntityIndex.TryGetValue(idVal, out var index))
+            return index;
+
         var e = Document.GetElement(id);
         if (e == null)
             return InvalidEntity;
 
         var category = e.Category;
         var catIndex = ProcessCategory(category);
-        var typeIndex = GetElementIndex(e.GetTypeId());
+        var typeIndex = ProcessElement(e.GetTypeId());
 
-        var ei = DataBuilder.AddEntity(e.Id.Value, e.UniqueId, DocumentIndex, e.Name, catIndex, typeIndex);
+        var ei = DataBuilder.AddEntity(idVal, e.UniqueId, DocumentIndex, e.Name, catIndex, typeIndex);
+        ElementToEntityIndex[idVal] = ei;
 
         AddDotNetTypeAsParameter(ei, e);
 
@@ -693,7 +707,8 @@ public class BosDocumentBuilder
 
         foreach (Element terminal in sys.Elements)
         {
-            var terminalEntityIndex = GetElementIndex(terminal.Id);
+            if (terminal == null) continue;
+            var terminalEntityIndex = ProcessElement(terminal.Id);
             DataBuilder.AddRelation(terminalEntityIndex, ei, RelationType.MemberOf);
         }
 
@@ -709,7 +724,8 @@ public class BosDocumentBuilder
 
         foreach (Element duct in ms.DuctNetwork)
         {
-            var ductEntityIndex = GetElementIndex(duct.Id);
+            if (duct == null) continue;
+            var ductEntityIndex = ProcessElement(duct.Id);
             DataBuilder.AddRelation(ductEntityIndex, ei, RelationType.MemberOf);
         }
     }
@@ -760,7 +776,8 @@ public class BosDocumentBuilder
 
         foreach (Element pipeOrFitting in pipesAndFittings)
         {
-            var pipeElementIndex = GetElementIndex(pipeOrFitting.Id);
+            if (pipeOrFitting == null) continue;
+            var pipeElementIndex = ProcessElement(pipeOrFitting.Id);
             DataBuilder.AddRelation(pipeElementIndex, ei, RelationType.MemberOf);
         }
 
@@ -783,7 +800,8 @@ public class BosDocumentBuilder
         var spaces = z.Spaces;
         foreach (Space space in spaces)
         {
-            var spaceIndex = GetElementIndex(space.Id);
+            if (space == null) continue;
+            var spaceIndex = ProcessElement(space.Id);
             DataBuilder.AddRelation(entityIndex, spaceIndex, RelationType.ContainedIn);
         }
     }
@@ -864,29 +882,16 @@ public class BosDocumentBuilder
             AddError(ei, ex);
         }
 
-        // Process non-type elements
-        foreach (var id in DocumentContext.ElementIds)
+        // Process non-type elements (used types are already processed automatically)
+        foreach (var id in GetElementIds())
         {
             try
             {
-                ProcessNewElement(new ElementId(id));
+                ProcessElement(id);
             }
             catch(Exception ex)
             {
-                AddError(GetElementIndex(new ElementId(id)), ex);
-            }
-        }
-
-        // Process type elements
-        foreach (var id in DocumentContext.TypeIds)
-        {
-            try
-            {
-                ProcessNewElement(new ElementId(id));
-            }
-            catch (Exception ex)
-            {
-                AddError(GetElementIndex(new ElementId(id)), ex);
+                AddError(id, ex);
             }
         }
     }

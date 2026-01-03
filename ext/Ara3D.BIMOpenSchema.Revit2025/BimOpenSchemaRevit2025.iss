@@ -21,7 +21,6 @@ Compression            =lzma2
 SolidCompression       =yes
 SetupIconFile          =ara3d.ico
 
-
 [Files]
 Source: "{#SrcRoot}\\BIMOpenSchema.addin"; DestDir: "{#AddinsPath}"; Flags: ignoreversion
 Source: "{#SrcRoot}\\Ara3D.BIMOpenSchema\\*"; DestDir: "{#AddinsPath}\\Ara3D.BIMOpenSchema"; Flags: ignoreversion recursesubdirs createallsubdirs

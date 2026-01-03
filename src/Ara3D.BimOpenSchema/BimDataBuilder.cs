@@ -8,7 +8,6 @@ public class BimDataBuilder : IBimData
 {
     public Manifest Manifest { get; set; } = new();
 
-    private readonly Dictionary<Entity, int> _entityLookup = new();
     private readonly Dictionary<Document, int> _documentLookup = new();
     private readonly Dictionary<Point, int> _pointLookup = new();
     private readonly Dictionary<ParameterDescriptor, int> _descriptorLookup = new();
@@ -45,8 +44,6 @@ public class BimDataBuilder : IBimData
     private int Add<T>(Dictionary<T, int> d, List<T> list, T val)
     {
         Debug.Assert(val != null);
-        if (val == null)
-            Debugger.Break();
         if (d.TryGetValue(val, out var index))
             return index;
         var r = d.Count;
@@ -60,7 +57,10 @@ public class BimDataBuilder : IBimData
         => _relations.Add(new(a, b, rt));
 
     public EntityIndex AddEntity(long localId, string globalId, DocumentIndex d, string name, EntityIndex category, EntityIndex type)
-        => (EntityIndex)Add(_entityLookup, _entities, new(localId, AddString(globalId), d, AddString(name), category, type));
+    {
+        _entities.Add(new(localId, AddString(globalId), d, AddString(name), category, type));
+        return (EntityIndex)(_entities.Count - 1);
+    }
 
     public DocumentIndex AddDocument(string title, string pathName)
         => (DocumentIndex)Add(_documentLookup, _documents, new(AddString(title), AddString(pathName)));

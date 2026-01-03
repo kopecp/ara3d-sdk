@@ -37,19 +37,17 @@
             folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             checkBoxIncludeLinks = new System.Windows.Forms.CheckBox();
             checkBoxMeshGeometry = new System.Windows.Forms.CheckBox();
-            buttonLuanchBOSExplorer = new System.Windows.Forms.Button();
+            buttonLanchAra3D = new System.Windows.Forms.Button();
             richTextBox1 = new System.Windows.Forms.RichTextBox();
-            label2 = new System.Windows.Forms.Label();
-            buttonLaunchWindowsExplorer = new System.Windows.Forms.Button();
             comboBoxLod = new System.Windows.Forms.ComboBox();
             SuspendLayout();
             // 
             // exportDirTextBox
             // 
             exportDirTextBox.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            exportDirTextBox.Location = new System.Drawing.Point(11, 43);
+            exportDirTextBox.Location = new System.Drawing.Point(18, 43);
             exportDirTextBox.Name = "exportDirTextBox";
-            exportDirTextBox.Size = new System.Drawing.Size(917, 31);
+            exportDirTextBox.Size = new System.Drawing.Size(680, 31);
             exportDirTextBox.TabIndex = 1;
             // 
             // label1
@@ -64,9 +62,9 @@
             // chooseFolderButton
             // 
             chooseFolderButton.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
-            chooseFolderButton.Location = new System.Drawing.Point(715, 98);
+            chooseFolderButton.Location = new System.Drawing.Point(715, 27);
             chooseFolderButton.Name = "chooseFolderButton";
-            chooseFolderButton.Size = new System.Drawing.Size(214, 45);
+            chooseFolderButton.Size = new System.Drawing.Size(214, 47);
             chooseFolderButton.TabIndex = 3;
             chooseFolderButton.Text = "Choose folder ...";
             chooseFolderButton.UseVisualStyleBackColor = true;
@@ -75,9 +73,9 @@
             // linkLabel1
             // 
             linkLabel1.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            linkLabel1.Location = new System.Drawing.Point(114, 604);
+            linkLabel1.Location = new System.Drawing.Point(109, 601);
             linkLabel1.Name = "linkLabel1";
-            linkLabel1.Size = new System.Drawing.Size(706, 25);
+            linkLabel1.Size = new System.Drawing.Size(702, 25);
             linkLabel1.TabIndex = 6;
             linkLabel1.TabStop = true;
             linkLabel1.Text = "https://github.com/ara3d/bim-open-schema";
@@ -88,10 +86,10 @@
             // 
             buttonExport.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             buttonExport.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
-            buttonExport.Location = new System.Drawing.Point(17, 184);
+            buttonExport.Location = new System.Drawing.Point(36, 190);
             buttonExport.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             buttonExport.Name = "buttonExport";
-            buttonExport.Size = new System.Drawing.Size(915, 55);
+            buttonExport.Size = new System.Drawing.Size(847, 55);
             buttonExport.TabIndex = 8;
             buttonExport.Text = "Run Export";
             buttonExport.UseVisualStyleBackColor = true;
@@ -121,50 +119,28 @@
             checkBoxMeshGeometry.Text = "Include geometry";
             checkBoxMeshGeometry.UseVisualStyleBackColor = true;
             // 
-            // buttonLuanchBOSExplorer
+            // buttonLanchAra3D
             // 
-            buttonLuanchBOSExplorer.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            buttonLuanchBOSExplorer.Font = new System.Drawing.Font("Segoe UI", 9F);
-            buttonLuanchBOSExplorer.Location = new System.Drawing.Point(61, 539);
-            buttonLuanchBOSExplorer.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            buttonLuanchBOSExplorer.Name = "buttonLuanchBOSExplorer";
-            buttonLuanchBOSExplorer.Size = new System.Drawing.Size(825, 43);
-            buttonLuanchBOSExplorer.TabIndex = 12;
-            buttonLuanchBOSExplorer.Text = "Launch BIM Open Schema Explorer";
-            buttonLuanchBOSExplorer.UseVisualStyleBackColor = true;
-            buttonLuanchBOSExplorer.Click += buttonLaunchBosExplorer_Click;
+            buttonLanchAra3D.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            buttonLanchAra3D.Font = new System.Drawing.Font("Segoe UI", 9F);
+            buttonLanchAra3D.Location = new System.Drawing.Point(36, 534);
+            buttonLanchAra3D.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            buttonLanchAra3D.Name = "buttonLanchAra3D";
+            buttonLanchAra3D.Size = new System.Drawing.Size(847, 43);
+            buttonLanchAra3D.TabIndex = 12;
+            buttonLanchAra3D.Text = "Show in Ara 3D Viewer ...";
+            buttonLanchAra3D.UseVisualStyleBackColor = true;
+            buttonLanchAra3D.Click += buttonLaunchAra3D_Click;
             // 
             // richTextBox1
             // 
             richTextBox1.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            richTextBox1.Location = new System.Drawing.Point(11, 289);
+            richTextBox1.Location = new System.Drawing.Point(11, 271);
             richTextBox1.Name = "richTextBox1";
-            richTextBox1.Size = new System.Drawing.Size(914, 188);
+            richTextBox1.Size = new System.Drawing.Size(910, 230);
             richTextBox1.TabIndex = 13;
             richTextBox1.Text = "";
             richTextBox1.TextChanged += richTextBox1_TextChanged;
-            // 
-            // label2
-            // 
-            label2.AutoSize = true;
-            label2.Location = new System.Drawing.Point(11, 261);
-            label2.Name = "label2";
-            label2.Size = new System.Drawing.Size(46, 25);
-            label2.TabIndex = 14;
-            label2.Text = "Log:";
-            // 
-            // buttonLaunchWindowsExplorer
-            // 
-            buttonLaunchWindowsExplorer.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            buttonLaunchWindowsExplorer.Font = new System.Drawing.Font("Segoe UI", 9F);
-            buttonLaunchWindowsExplorer.Location = new System.Drawing.Point(61, 488);
-            buttonLaunchWindowsExplorer.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            buttonLaunchWindowsExplorer.Name = "buttonLaunchWindowsExplorer";
-            buttonLaunchWindowsExplorer.Size = new System.Drawing.Size(825, 45);
-            buttonLaunchWindowsExplorer.TabIndex = 15;
-            buttonLaunchWindowsExplorer.Text = "Launch Windows Explorer";
-            buttonLaunchWindowsExplorer.UseVisualStyleBackColor = true;
-            buttonLaunchWindowsExplorer.Click += buttonLaunchWindowsExplorer_Click;
             // 
             // comboBoxLod
             // 
@@ -173,19 +149,17 @@
             comboBoxLod.Items.AddRange(new object[] { "Coarse Detail", "Medium Detail", "Fine Detail" });
             comboBoxLod.Location = new System.Drawing.Point(199, 133);
             comboBoxLod.Name = "comboBoxLod";
-            comboBoxLod.Size = new System.Drawing.Size(269, 33);
+            comboBoxLod.Size = new System.Drawing.Size(188, 33);
             comboBoxLod.TabIndex = 16;
             // 
             // BIMOpenSchemaExporterForm
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(945, 644);
+            ClientSize = new System.Drawing.Size(941, 649);
             Controls.Add(comboBoxLod);
-            Controls.Add(buttonLaunchWindowsExplorer);
-            Controls.Add(label2);
             Controls.Add(richTextBox1);
-            Controls.Add(buttonLuanchBOSExplorer);
+            Controls.Add(buttonLanchAra3D);
             Controls.Add(checkBoxMeshGeometry);
             Controls.Add(checkBoxIncludeLinks);
             Controls.Add(buttonExport);
@@ -210,10 +184,8 @@
         private System.Windows.Forms.FolderBrowserDialog folderBrowserDialog1;
         private System.Windows.Forms.CheckBox checkBoxIncludeLinks;
         private System.Windows.Forms.CheckBox checkBoxMeshGeometry;
-        private System.Windows.Forms.Button buttonLuanchBOSExplorer;
+        private System.Windows.Forms.Button buttonLanchAra3D;
         private System.Windows.Forms.RichTextBox richTextBox1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Button buttonLaunchWindowsExplorer;
         private System.Windows.Forms.ComboBox comboBoxLod;
     }
 }

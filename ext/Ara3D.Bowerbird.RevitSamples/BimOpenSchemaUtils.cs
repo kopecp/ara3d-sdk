@@ -96,7 +96,7 @@ namespace Ara3D.Bowerbird.RevitSamples
 
             logger.Log($"Create Revit builder and gather links");
             var bosRevitBuilder = new BosRevitBuilder(options, settings);
-            var context = new BosDocumentContext(currentDoc);
+            var context = new BosDocumentContext(bosRevitBuilder, currentDoc);
             var docs = context.GatherLinkedDocuments();
             if (!settings.IncludeLinks)
                 docs = [context];
@@ -105,9 +105,6 @@ namespace Ara3D.Bowerbird.RevitSamples
             var docBuilders = new List<BosDocumentBuilder>();
             for (var i = 0; i < docs.Count; i++)
             {
-                var localContext = docs[i];
-                localContext.RetrieveElementIds();
-                logger.Log($"Parsing document {i} with {localContext.ElementIds.Count} non-type elements");
                 var localDocBuilder = new BosDocumentBuilder(bosRevitBuilder, docs[i]);
                 docBuilders.Add(localDocBuilder);
                 localDocBuilder.ProcessDocument();

@@ -14,10 +14,25 @@ namespace Ara3D.Bowerbird.RevitSamples
 {
     public static class ExtensionsRevit
     {
-        public static IEnumerable<Element> GetElements(this Document doc)
+        public static ICollection<Element> GetElements(this Document doc)
             => new FilteredElementCollector(doc)
                 .WhereElementIsNotElementType()
                 .ToElements();
+
+        public static ICollection<ElementId> GetElementIds(this Document doc)
+            => new FilteredElementCollector(doc)
+                .WhereElementIsNotElementType()
+                .ToElementIds();
+
+        public static ICollection<Element> GetTypeElements(this Document doc)
+            => new FilteredElementCollector(doc)
+                .WhereElementIsElementType()
+                .ToElements();
+
+        public static ICollection<ElementId> GetTypeElementIds(this Document doc)
+            => new FilteredElementCollector(doc)
+                .WhereElementIsElementType()
+                .ToElementIds();
 
         public static IEnumerable<Phase> GetPhases(this Document doc)
             => doc.CollectElements()
