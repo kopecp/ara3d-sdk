@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using Ara3D.Utils;
 
 namespace Ara3D.ScriptService;
@@ -9,7 +10,7 @@ public class ScriptType
     {
         Type = type;
         Source = source;
-            
+
         if (HasDefaultCtor)
         {
             try

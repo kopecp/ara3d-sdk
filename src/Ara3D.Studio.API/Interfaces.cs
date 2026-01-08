@@ -5,6 +5,34 @@ using Ara3D.Utils;
 
 namespace Ara3D.Studio.API;
 
+public interface IExporter
+{
+    public void Export(IReadOnlyList<Model3D> models, string filePath);
+    public string FileType { get; }
+    public string FileExtension { get; }
+}
+
+public interface IHostApplication
+{
+    ILogger Logger { get; }
+    void Invalidate(object obj);
+    void RefreshUI(object obj);
+}
+
+// Implementing this interface assures that your script is called on a regular phases
+public interface IAnimated
+{ }
+
+public interface IAnimatedModelGenerator : IScriptedCommand, IAnimated
+{
+    Model3D Eval(EvalContext context);
+}
+
+public interface IAnimatedModelModifier : IScriptedComponent, IAnimated
+{
+    Model3D Eval(Model3D model3D, EvalContext context);
+}
+
 /// <summary>
 /// A scripted component, is one that is loaded from a plug-in DLL or a C# source file 
 /// </summary>
@@ -82,12 +110,28 @@ public interface ILineMeshGenerator : IGenerator
     LineMesh3D Eval(EvalContext context);
 }
 
+
 /// <summary>
-/// A modifier that converts from objects into other objects. 
+/// A modifier converts objects into other objects. 
 /// </summary>
-public interface IModelModifier : IScriptedComponent
+public interface IModifier : IScriptedComponent
+{ 
+}
+
+/// <summary>
+/// A modifier that converts from models into models. 
+/// </summary>
+public interface IModelModifier : IModifier
 {
     IModel3D Eval(IModel3D model3D, EvalContext context);
+}
+
+/// <summary>
+/// 
+/// </summary>
+public interface IPathModifier : IModifier
+{
+    object Eval(LineMesh3D mesh, EvalContext context);
 }
 
 /// <summary>

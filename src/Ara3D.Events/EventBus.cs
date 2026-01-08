@@ -3,7 +3,6 @@
 /// <summary>
 /// Thread‑safe, lock‑free (copy‑on‑write) event bus.
 /// * Subscribers are stored via <see cref="WeakReference{T}"/> and purged lazily.
-/// * Publish is fire‑and‑forget; each handler runs on the thread‑pool.
 /// </summary>
 public sealed class EventBus : IEventBus
 {

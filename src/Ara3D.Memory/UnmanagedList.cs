@@ -197,5 +197,11 @@ namespace Ara3D.Memory
             Clear();
             AddRange(other);
         }
+
+        public T* Ptr
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _pointer;
+        }
     }
 }

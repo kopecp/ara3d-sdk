@@ -121,6 +121,12 @@ public static class PropFactory
                 new PropDescriptorString(name, displayName, description, units, isReadOnly),
                 targetType, type, getter, setter);
         }
+        else if (type == typeof(Action))
+        {
+            return CreatePropAccessor(
+                new PropDescriptorAction(name, displayName, description),
+                targetType, type, getter, setter);
+        }
         else
         {
             return CreatePropAccessor(

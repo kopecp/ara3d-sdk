@@ -28,7 +28,8 @@ public class RenderModelData : IDisposable
     public long TotalFaceCount { get; private set; }
 
     public int VertexCount => VertexBuffer.Count;
-    public int FaceCount => IndexBuffer.Count / PrimitiveSize;
+    public int IndexCount => IndexBuffer.Count;
+    public int FaceCount => IndexCount / PrimitiveSize;
     public int MeshCount => MeshBuffer.Count;
     public int InstanceCount => InstanceBuffer.Count;
 
@@ -148,6 +149,34 @@ public class RenderModelData : IDisposable
 
         InstanceBuffer.AddRange(model.Instances);
         ValidateMeshSlices();
+        RecomputeBounds();
+    }
+
+    public void Update(IEnumerable<RenderModelData> models)
+    {
+        PrimitiveSize = 3;
+
+        if (!IsModel3D)
+            throw new Exception("Not a model 3D");
+
+        VertexBuffer.Clear();
+        IndexBuffer.Clear();
+        MeshBuffer.Clear();
+        InstanceBuffer.Clear();
+
+        foreach (var model in models)
+        {
+            if (model.PrimitiveSize != model.PrimitiveSize)
+                continue;
+
+            VertexBuffer.AddRange(model.VertexBuffer);
+            IndexBuffer.AddRange(model.IndexBuffer);
+            var meshOffset = MeshBuffer.Count;
+            MeshBuffer.AddRange(model.MeshBuffer);
+            foreach (var i in model.InstanceBuffer)
+                InstanceBuffer.Add(i.WithMeshIndex(i.MeshIndex + meshOffset));
+        }
+
         RecomputeBounds();
     }
 
