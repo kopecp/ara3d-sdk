@@ -9,15 +9,17 @@ using Ara3D.Utils.Roslyn;
 
 namespace Ara3D.ScriptService;
 
+// NOTE: this is a LEGACY scripting service, that is used in Bowerbird only.
+// TODO: move to bowerbird 
 public class ScriptingService : 
     SingletonModelBackedService<ScriptingDataModel>, 
     IScriptingService
 {
-    public Compiler Compiler => WatchingCompiler?.Compiler;
+    public Compilation Compilation => WatchingCompiler?.Compilation;
     public DirectoryWatchingCompiler WatchingCompiler { get; }
     public ILogger Logger { get; set; }
     public ScriptingOptions Options { get; }
-    public Assembly Assembly => WatchingCompiler?.Compiler?.Output?.Assembly;
+    public Assembly Assembly { get; set; }
     public IReadOnlyList<ScriptType> Types { get; private set; } = [];
 
     public ScriptingService(IServiceManager app, ILogger logger, ScriptingOptions options)
@@ -27,8 +29,7 @@ public class ScriptingService :
         Options = options;
         CreateInitialFolders();
         
-        // TODO: decide how we want to handle caching. 
-        var compilerOptions = CompilerOptions.CreateDefault().WithCaching();
+        var compilerOptions = CompilerOptions.CreateDefault();
 
         WatchingCompiler = new DirectoryWatchingCompiler(Logger, Options.ScriptsFolder, Options.LibrariesFolder, false, compilerOptions);
         WatchingCompiler.RecompileEvent += WatchingCompilerRecompileEvent;
@@ -65,25 +66,43 @@ public class ScriptingService :
 
     public void UpdateDataModel()
     {
-        var typeNameToFilePath = Compiler?.Output?.Result?.TypeToSourceMap ?? new Dictionary<string, string>();
-        var types = Compiler?.Output?.ExportedTypes.ToArray() ?? [];
-        var scriptTypes = new List<ScriptType>();
-        foreach (var type in types)
+        var typeNameToFilePath = Compilation?.Output?.TypeToSourceMap ?? new();
+        Assembly = null;
+        Types = [];
+        if (Compilation?.Output?.Success == true)
         {
-            var path = typeNameToFilePath.GetValueOrDefault(type.FullName ?? "");
-            scriptTypes.Add(new ScriptType(type, path));
+            try
+            {
+                var asmFile = Compilation?.Output?.OutputFilePath;
+                if (asmFile != null && asmFile?.Exists() == true)
+                {
+                    Assembly = Assembly.LoadFile(asmFile);
+                    var scriptTypes = new List<ScriptType>();
+                    foreach (var type in Assembly?.ExportedTypes ?? [])
+                    {
+                        var path = typeNameToFilePath.GetValueOrDefault(type.FullName ?? "");
+                        scriptTypes.Add(new ScriptType(type, path));
+                    }
+
+                    Types = scriptTypes;
+                }
+            }
+            catch (Exception e)
+            {
+                Assembly = null;
+                Logger?.LogError(e);
+            }
         }
-        Types = scriptTypes;
 
         Repository.Value = new ScriptingDataModel()
         {
             Dll = Assembly?.Location ?? "",
-            Directory = WatchingCompiler?.Directory,
+            Directory = WatchingCompiler?.Directory ?? default,
             TypeNames = Types.Select(t => t.Type.FullName).OrderBy(t => t).ToArray(),
-            Files = Compiler?.InputFiles?.OrderBy(x => x.Value).ToArray() ?? [],
-            Assemblies = Compiler?.Input.Refs?.Select(fp => fp.Value).ToList(),
-            Diagnostics = Compiler?.Output?.Result?.Diagnostics?.Select(d => d.ToString()).ToArray() ?? [],
-            EmitSuccess = Compiler?.Output?.Success == true,
+            Files = Compilation?.Input?.InputFiles?.OrderBy(x => x.Value).ToArray() ?? [],
+            Assemblies = Compilation?.Input?.Refs?.Select(fp => fp.Value).ToList(),
+            Diagnostics = Compilation?.Output?.Errors.ToArray() ?? [],
+            EmitSuccess = Compilation?.Output?.Success == true,
             LoadSuccess = Assembly != null,
             Options = Options,
         };

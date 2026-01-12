@@ -8,13 +8,12 @@ namespace Ara3D.Utils.Roslyn
 {
     public class CompilerOptions
     {
-        public CompilerOptions(IEnumerable<FilePath> fileReferences, FilePath outputFileName, bool debug, bool useCache)
-            => (FileReferences, OutputFile, Debug, UseCache) 
-                = (fileReferences.ToList(), outputFileName, debug, useCache);
+        public CompilerOptions(IEnumerable<FilePath> fileReferences, FilePath outputFileName, bool debug)
+            => (FileReferences, OutputFile, Debug) 
+                = (fileReferences.ToList(), outputFileName, debug);
 
         public FilePath OutputFile { get; }
         public bool Debug { get; }
-        public bool UseCache { get; }
         public IReadOnlyList<FilePath> FileReferences { get; }
 
         public string AssemblyName
@@ -34,20 +33,17 @@ namespace Ara3D.Utils.Roslyn
             => RoslynUtils.ReferencesFromFiles(FileReferences);
 
         public CompilerOptions WithNewOutputFilePath(string fileName = null) =>
-            new(FileReferences, fileName, Debug, UseCache);
+            new(FileReferences, fileName, Debug);
 
         public CompilerOptions WithNewReferences(IEnumerable<FilePath> fileReferences) =>
-            new(fileReferences, OutputFile, Debug, UseCache);
+            new(fileReferences, OutputFile, Debug);
 
         public static CompilerOptions CreateDefault()
             => new(RoslynUtils.LoadedAssemblyLocations(), 
-                RoslynUtils.GenerateNewDllFileName(), true, false);
-
-        public CompilerOptions WithCaching()
-            => new(FileReferences, OutputFile, Debug, true);
+                RoslynUtils.GenerateNewDllFileName(), true);
 
         public static CompilerOptions CreateDefault(Type[] types)
             => new(types.Select(t => (FilePath)t.Assembly.Location),
-                RoslynUtils.GenerateNewDllFileName(), true, false);
+                RoslynUtils.GenerateNewDllFileName(), true);
     }
 }

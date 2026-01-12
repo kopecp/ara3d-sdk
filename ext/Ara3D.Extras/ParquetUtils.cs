@@ -163,7 +163,7 @@ public static class ParquetUtils
     }
 
     public static IDataSet ReadParquetFromZip(this FilePath filePath)
-        => Task.Run(filePath.ReadParquetFromZipAsync).GetAwaiter().GetResult();
+        => Task.Run(() => filePath.ReadParquetFromZipAsync()).GetAwaiter().GetResult();
 
     public static void WriteParquetToZip(this BimGeometry bg, FilePath file,
         CompressionMethod parquetCompressionMethod = CompressionMethod.Brotli,
@@ -268,7 +268,7 @@ public static class ParquetUtils
         => (await fp.ReadParquetFromZipAsync()).ToBimGeometry();
 
     public static BimGeometry ReadBimGeometryFromParquetZip(this FilePath fp)
-        => Task.Run(fp.ReadBimGeometryFromParquetZipAsync).GetAwaiter().GetResult();
+        => Task.Run(() => fp.ReadBimGeometryFromParquetZipAsync()).GetAwaiter().GetResult();
 
     /// <summary>
     /// Reads every "*.parquet" entry from <paramref name="zipPath"/>

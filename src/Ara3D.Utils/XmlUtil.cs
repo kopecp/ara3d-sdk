@@ -21,8 +21,10 @@ namespace Ara3D.Utils
             return document;
         }
 
-        public static FilePath ModifyXmlDocument(this FilePath srcFilePath, Action<XDocument> modification, FilePath destFilePath = null)
-            => srcFilePath.LoadXml().ApplyModification(modification).SaveXml(destFilePath ?? srcFilePath);
+        public static FilePath ModifyXmlDocument(this FilePath srcFilePath, Action<XDocument> modification,
+            FilePath destFilePath = default)
+            => srcFilePath.LoadXml().ApplyModification(modification)
+                .SaveXml(destFilePath.Value.IsNullOrEmpty() ? srcFilePath : destFilePath);
 
         public static XDocument SetAttribute(this XDocument document, string elementName, string attributeName,
             string newValue)

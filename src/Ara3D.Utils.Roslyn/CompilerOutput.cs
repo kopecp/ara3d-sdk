@@ -1,36 +1,58 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 
 namespace Ara3D.Utils.Roslyn;
 
 public class CompilerOutput
 {
-    public bool Success => Assembly != null;
-    public Assembly Assembly { get; }
-    public string ErrorMessage { get; }
-    public FilePath OutputFile => Result.OutputFile;
-    public SerializableCompilationResult Result { get; }
-    public IReadOnlyList<Type> ExportedTypes => Assembly?.ExportedTypes.ToList() ?? [];
+    public ParsedCompilerInput Input { get; }
+    public CSharpCompilation CSharpCompilation { get; }
+    public EmitResult EmitResult { get; }
+    public bool Success => EmitResult.Success;
+    public FilePath OutputFilePath => Input.Options.OutputFile;
+    public IEnumerable<string> Errors => EmitResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.ToString());
+    public Dictionary<string, string> TypeToSourceMap { get; }
 
-    public CompilerOutput(SerializableCompilationResult result)
+    public CompilerOutput(ParsedCompilerInput input, CSharpCompilation compilation, EmitResult emitResult)
     {
-        Result = result;
-        if (OutputFile.Value.IsNullOrWhiteSpace())
-            ErrorMessage = "Output file is empty";
-        else if (!OutputFile.Exists())
-            ErrorMessage = $"Output file not found: {OutputFile}";
-        else
+        Input = input;
+        CSharpCompilation = compilation;
+        EmitResult = emitResult;
+        TypeToSourceMap = ConstructTypeMap(CSharpCompilation);
+    }
+
+    public static Dictionary<string, string> ConstructTypeMap(CSharpCompilation compilation)
+    {
+        var r = new Dictionary<string, string>();
+
+        void Visit(INamespaceSymbol ns)
         {
-            try
-            {
-                Assembly = Assembly.LoadFile(OutputFile);
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage = ex.Message;
-            }
+            foreach (var t in ns.GetTypeMembers())
+                AddTypeAndPartials(t);
+            foreach (var child in ns.GetNamespaceMembers())
+                Visit(child);
         }
+
+        void AddTypeAndPartials(INamedTypeSymbol type)
+        {
+            // One type may have multiple declaring syntax locations (partials)
+            var paths = type.DeclaringSyntaxReferences
+                .Select(r => r.SyntaxTree.FilePath)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .Distinct()
+                .ToArray();
+
+            if (paths.Length > 0)
+                r[type.ToDisplayString()] = paths[0]; 
+
+            foreach (var nested in type.GetTypeMembers())
+                AddTypeAndPartials(nested);
+        }
+
+        Visit(compilation.GlobalNamespace);
+        return r;
     }
 }

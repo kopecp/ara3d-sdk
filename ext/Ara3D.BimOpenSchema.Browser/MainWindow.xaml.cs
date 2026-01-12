@@ -201,7 +201,7 @@ namespace Ara3D.BimOpenSchema.Browser
             }
 
             var folder = ChooseFolder();
-            if (!folder?.Exists() == true)
+            if (!folder.Exists())
                 return;
 
             using var waitContext = new WpfWaitContext();
@@ -222,7 +222,7 @@ namespace Ara3D.BimOpenSchema.Browser
             }
 
             var folder = ChooseFolder();
-            if (!folder?.Exists() == true)
+            if (!folder.Exists())
                 return;
 
             using var waitContext = new WpfWaitContext();
@@ -245,7 +245,7 @@ namespace Ara3D.BimOpenSchema.Browser
         private async void ExportParquet_Click(object sender, RoutedEventArgs e)
         {
             var folder = ChooseFolder();
-            if (!folder?.Exists() == true)
+            if (folder.Exists())
                 return;
 
             if (!File.Exists(CurrentFile))
@@ -271,31 +271,6 @@ namespace Ara3D.BimOpenSchema.Browser
             catch (Exception ex)
             {
                 MessageBox.Show($"Error occured when exporting parquet files: {ex}");
-            }
-        }
-
-        private async void ExportSplitBOS_Click(object sender, RoutedEventArgs e)
-        {
-            if (GroupedEntities.Count <= 1)
-            {
-                MessageBox.Show("Exporting split BOS files requires one of the grouping options to be used");
-                return;
-            }
-
-            var folder = ChooseFolder();
-            if (!folder?.Exists() == true)
-                return;
-
-            if (!File.Exists(CurrentFile))
-                return;
-
-            try
-            {
-                // TODO: create new BOS files. 
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error occured when exporting BOS files: {ex}");
             }
         }
 

@@ -10,7 +10,7 @@ namespace Ara3D.Utils.Roslyn
     public class DirectoryWatchingCompiler : IDisposable
     {
         public ILogger Logger { get; }
-        public Compiler Compiler { get; private set; }
+        public Compilation Compilation { get; private set; }
 
         public DirectoryPath Directory => Watcher.Directory;
         public DirectoryWatcher Watcher { get; }
@@ -108,7 +108,7 @@ namespace Ara3D.Utils.Roslyn
                 TokenSource = new CancellationTokenSource();
                 var token = TokenSource.Token;
 
-                Compiler = null;
+                Compilation = null;
 
                 Log($"Compilation task started of {Directory}");
                 var refsFile = Directory.RelativeFile(RefsFileName);
@@ -190,7 +190,7 @@ namespace Ara3D.Utils.Roslyn
                 {
                     Log("Creating compiler");
                     var input = new CompilerInput(inputFiles, Options, refs);
-                    Compiler = new Compiler(AssemblyUtil.VersionString, input, Logger, token);
+                    Compilation = input.Compile(Logger, token);
                 }
                 catch (Exception ex)
                 {

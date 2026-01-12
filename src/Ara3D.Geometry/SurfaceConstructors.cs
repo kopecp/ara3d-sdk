@@ -1,6 +1,4 @@
 ﻿using Ara3D.Collections;
-using System.Collections.Generic;
-
 namespace Ara3D.Geometry;
 
 public static class SurfaceConstructors
@@ -47,6 +45,9 @@ public static class SurfaceConstructors
 
     public static QuadGrid3D Extrude(this IReadOnlyList<Point3D> points, Vector3 vector)
         => RowsToArray([points, points.Translate(vector)]).ToQuadGrid3D(false, false);
+    
+    public static QuadGrid3D Extrude(this IReadOnlyList<Point3D> points, Vector3 vector, int count)
+        => RowsToArray(count.MapRange(i => points.Translate(vector * i))).ToQuadGrid3D(false, false);
 
     public static QuadGrid3D Extrude(this IReadOnlyList<Point3D> points, Number height)
         => points.Extrude(height * Vector3.UnitZ);
@@ -62,4 +63,66 @@ public static class SurfaceConstructors
 
     public static TriangleMesh3D Triangulate(this QuadGrid3D grid)
         => grid.ToQuadMesh3D().Triangulate();
+
+    public static IEnumerable<IReadOnlyList<int>> GetLineGroups(this LineMesh3D lineMesh)
+    {
+        var faces = lineMesh.FaceIndices;
+        if (faces.Count == 0) yield break;
+        var prev = faces[0].A;
+        var group = new List<int>();
+        foreach (var face in faces)
+        {
+            if (face.A != prev)
+            {
+                yield return group;
+                group = [];
+            }
+
+            group.Add(face.A);
+            prev = face.B;
+        }
+
+        if (group.Count != 0)
+            yield return group;
+    }
+
+    public static QuadGrid3D ExtrudeLineGroup(this IReadOnlyList<int> indices, IReadOnlyList<Point3D> points, Vector3 dir, int count)
+    {
+        var newPoints = indices.Map(i => points[i]);
+        var connectU = indices[0] == indices[^1];
+        return RowsToArray(count.MapRange(i => newPoints.Translate(dir * i))).ToQuadGrid3D(connectU, false);
+    }
+
+    public static QuadMesh3D Extrude(this LineMesh3D lineMesh, Vector3 direction, int count)
+    {
+        var groups = lineMesh.GetLineGroups().ToList();
+        var meshes = groups.Map(g => g.ExtrudeLineGroup(lineMesh.Points, direction, count));
+        return meshes.ToQuadMesh();
+    }
+
+    public static QuadMesh3D ToQuadMesh(this IEnumerable<QuadGrid3D> grids)
+    {
+        var points = new List<Point3D>();
+        var faces = new List<Integer4>();
+        var offset = 0;
+
+        foreach (var grid in grids)
+        {
+            points.AddRange(grid.Points);
+            foreach (var face in grid.FaceIndices)
+            {
+                faces.Add(new Integer4(
+                    face.A + offset,
+                    face.B + offset,
+                    face.C + offset,
+                    face.D + offset));
+            }
+            offset = points.Count;
+        }
+
+        return new QuadMesh3D(points, faces);
+    }
+
+    public static QuadGrid3D ToQuadGrid3D(IReadOnlyList<Point3D> points, Vector3 v)
+        => points.Extrude(v);
 }

@@ -7,21 +7,14 @@ namespace Ara3D.Utils.Roslyn
 {
     /// <summary>
     /// Used for a single compilation event.
-    /// This optionally uses a cache to minimize recompilation 
     /// </summary>
-    public class Compiler
+    public class Compilation
     {
         public ILogger Logger { get; }
         public CompilerInput Input { get; }
         public CompilerOutput Output { get; }
 
-        public FilePath OutputFile => Input.Options.OutputFile;
-        public FilePath CacheFilePath => OutputFile.RelativeFile("cache.json");
-        public CompilerOptions Options => Input.Options;
-        public IReadOnlyList<FilePath> InputFiles => Input.InputFiles;
-
-        public Compiler(
-            string version,
+        public Compilation(
             CompilerInput input,
             ILogger logger, 
             CancellationToken token)
@@ -29,70 +22,28 @@ namespace Ara3D.Utils.Roslyn
             Input = input;
             Logger = logger;
 
-            if (Options.UseCache)
+            try
             {
-                Log(":Consulting Cache:");
-                Output = TryLoadCache(version);
-                if (Output?.Success == true)
-                    return;
+                Log("Parsing");
+                if (token.IsCancellationRequested) return;
+                var parsedInput = new ParsedCompilerInput(input, token);
+
+                Log("Compiling");
+                if (token.IsCancellationRequested) return;
+                Output = parsedInput.CompileCSharpStandard(null, token);
+
+                Log($"Diagnostics");
+                foreach (var x in Output.Errors)
+                    Log($"  {x}");
+
+                Log(Output.Success ? "Compilation Succeeded" : "Compilation Failed");
+
             }
-
-            Log(":Parsing:");
-            if (token.IsCancellationRequested) return;
-            var parsedInput = new ParsedCompilerInput(input, token);
-
-            Log(":Compiling:");
-            if (token.IsCancellationRequested) return;
-            var compilation = parsedInput.CompileCSharpStandard(null, token);
-
-            Log($":Writing Cache:");
-            var result = SerializableCompilationResult.Create(compilation, version);
-            CacheFilePath.WriteJson(result);
-            Output = new CompilerOutput(result);
-
-            Log($":Diagnostics:");
-            foreach (var x in Output.Result.Diagnostics)
-                Log($"  {x}");
-
-            Log(Output.Success ? ":Compilation Succeeded:" : ":Compilation Failed:");
-        }
-
-        public CompilerOutput TryLoadCache(string version)
-        {
-            if (Options.UseCache && CacheFilePath.Exists())
+            catch (Exception e)
             {
-                try
-                {
-                    Logger.Log("Consulting cache file");
-                    var cache = LoadCache();
-                    if (cache.IsValid(version, InputFiles))
-                    {
-                        Logger.Log("Cache is valid.");
-                        Logger.Log($"Attempting to load assembly from {OutputFile}");
-                        var r = new CompilerOutput(cache);
-                        if (r.Success)
-                            return r;
-                        Logger.Log($"Failed to load assembly: {r.ErrorMessage}");
-                    }
-                    else
-                    {
-                        Logger.Log("Cache is invalid.");
-                    }
-
-                    Logger.Log("Failed to load cache, deleting the cache file.");
-                    CacheFilePath.Delete();
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex);
-                }
+                Logger?.LogError(e);
             }
-
-            return null;
         }
-
-        public SerializableCompilationResult LoadCache()
-            => CacheFilePath.LoadJson<SerializableCompilationResult>();
 
         public void Log(string s)
             => Logger?.Log(s);

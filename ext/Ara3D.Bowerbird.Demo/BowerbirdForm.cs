@@ -63,8 +63,8 @@ namespace Ara3D.Bowerbird.Demo
         {
             var data = Service.ScriptingData;
             textBoxOutputDll.Text = data.Dll;
-            textBoxLibraryDir.Text = data.Options.LibrariesFolder ?? "";
-            textBoxSourceFiles.Text = data.Options.ScriptsFolder ?? "";
+            textBoxLibraryDir.Text = data.Options.LibrariesFolder;
+            textBoxSourceFiles.Text = data.Options.ScriptsFolder;
             checkBoxAutoRecompile.Checked = Service.ScriptingService.AutoRecompile;
 
             checkBoxEmit.Checked = data.EmitSuccess;
@@ -76,7 +76,7 @@ namespace Ara3D.Bowerbird.Demo
             checkBoxLoad.Checked = data.LoadSuccess;
             checkBoxLoad.Text = "Load " + (data.LoadSuccess ? "Successful" : "Failed");
 
-            UpdateListBox(listBoxFiles, data.Files);
+            UpdateListBox(listBoxFiles, data.Files.Select(f => (object)f));
             UpdateListBox(listBoxAssemblies, data.Assemblies);
             UpdateListBox(listBoxTypes, data.TypeNames);
             UpdateListBox(listBoxErrors, data.Diagnostics);
@@ -137,7 +137,7 @@ namespace Ara3D.Bowerbird.Demo
 
         private void listBoxFiles_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            GetSelectedFile()?.OpenDefaultProcess();
+            GetSelectedFile().OpenDefaultProcess();
         }
 
         private void contextMenuStripCommands_Opening(object sender, System.ComponentModel.CancelEventArgs e)
@@ -147,7 +147,7 @@ namespace Ara3D.Bowerbird.Demo
 
         private void contextMenuStripFiles_Opening(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            contextMenuStripFiles.Items[0].Enabled = GetSelectedFile() != null;
+            contextMenuStripFiles.Items[0].Enabled = GetSelectedFile().Exists();
         }
 
         private void runSelectedCommandToolStripMenuItem_Click(object sender, EventArgs e)
@@ -162,7 +162,7 @@ namespace Ara3D.Bowerbird.Demo
 
         private void openSelectedFileToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            GetSelectedFile()?.OpenDefaultProcess();
+            GetSelectedFile().OpenDefaultProcess();
         }
 
         private void RecompileButton_Click(object sender, EventArgs e)

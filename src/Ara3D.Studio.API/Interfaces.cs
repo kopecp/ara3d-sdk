@@ -110,12 +110,21 @@ public interface ILineMeshGenerator : IGenerator
     LineMesh3D Eval(EvalContext context);
 }
 
+/// <summary>
+/// A script that generates line meshes
+/// </summary>
+public interface IQuadMeshGenerator : IGenerator
+{
+    QuadMesh3D Eval(EvalContext context);
+}
+
 
 /// <summary>
 /// A modifier converts objects into other objects. 
 /// </summary>
 public interface IModifier : IScriptedComponent
-{ 
+{
+    
 }
 
 /// <summary>

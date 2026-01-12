@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Ara3D.Logging;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -49,7 +50,7 @@ namespace Ara3D.Utils.Roslyn
             return path;
         }
 
-        public static Compilation CompileCSharpStandard(this ParsedCompilerInput input,
+        public static CompilerOutput CompileCSharpStandard(this ParsedCompilerInput input,
             CSharpCompilation compilation = null,
             CancellationToken token = default)
         {
@@ -69,7 +70,10 @@ namespace Ara3D.Utils.Roslyn
                 emitResult = compilation.Emit(peStream, null, null, null, null, emitOptions,
                     null, null, input.EmbeddedTexts, token);
             }
-            return new Compilation(input, compilation, emitResult);
+            return new CompilerOutput(input, compilation, emitResult);
         }
+
+        public static Compilation Compile(this CompilerInput input, ILogger logger = null, CancellationToken token = default)
+            => new(input, logger, token);
     }
 }
