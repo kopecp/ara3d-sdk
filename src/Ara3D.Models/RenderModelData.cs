@@ -67,7 +67,15 @@ public class RenderModelData : IDisposable
         MeshBuffer = null;
         InstanceBuffer = null;
     }
-    
+
+    public void Clear()
+    {
+        VertexBuffer?.Clear();
+        IndexBuffer?.Clear();
+        MeshBuffer?.Clear();
+        InstanceBuffer?.Clear();
+    }
+
     public void Update(
         IBuffer<float> vertexBuffer, 
         IBuffer<uint> indexBuffer, 

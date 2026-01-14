@@ -8,6 +8,8 @@ public class FacadeMesh : IQuadMeshGenerator
     [Range(1, 20)] public int HeightSegments = 4;
     [Range(0f, 1f)] public float InsetAmount = 0.5f;
     [Range(-10f, 10f)] public float PushDistance = 0.2f;
+    public bool DeleteExtrudedFace;
+    [Range(0f, 5f)] public float Mullion = 0.2f;
 
     public float TotalHeight => Height * HeightSegments;
     public float TotalWidth => Width * WidthSegments;
@@ -75,6 +77,8 @@ public class FacadeMesh : IQuadMeshGenerator
             var newFace = InsertFace(f, q2, newPoints, newFaces);
             newFaces.RemoveAt(newFaces.Count - 1);
             ExtrudeFace(newFace, PushDistance, newPoints, newFaces);
+            if (DeleteExtrudedFace)
+                newFaces.RemoveAt(newFaces.Count - 1);
         }
 
         return (newPoints, newFaces);

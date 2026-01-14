@@ -100,9 +100,15 @@ namespace Ara3D.Utils
         public static string GetTimeStamp()
             => DateTime.Now.ToTimeStamp();
 
+        /// <summary>
+        /// Returns the file name without the directory, but with the extension.
+        /// </summary>
         public static string GetFileName(this FilePath filePath)
             => Path.GetFileName(filePath);
 
+        /// <summary>
+        /// Returns the file name without the directory and without the extension.
+        /// </summary>
         public static string GetFileNameWithoutExtension(this FilePath filePath)
             => Path.GetFileNameWithoutExtension(filePath);
 

@@ -2,13 +2,7 @@
 {
     public static unsafe class MarchingCubeExtensions
     {
-        public static Number Unlerp(this Number value, Number min, Number max)
-        {
-            var d = max - min;
-            if (d.AlmostZero)
-               return 0.5f; // If min and max are equal, return 0.5 to avoid division by zero.
-            return (value - min) / (max - min);
-        }
+
 
         public static Vector3 InterpolateVertices(Vector3 vertex0, Vector3 vertex1, Number fieldValue0, Number fieldValue1, Number threshold)
         {
