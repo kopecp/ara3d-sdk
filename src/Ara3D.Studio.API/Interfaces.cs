@@ -138,7 +138,7 @@ public interface IModelModifier : IModifier
 /// <summary>
 /// 
 /// </summary>
-public interface IPathModifier : IModifier
+public interface ILineMeshModifier : IModifier
 {
     object Eval(LineMesh3D mesh, EvalContext context);
 }

@@ -242,8 +242,8 @@
         public static Quad3D InsetQuad(this Quad3D q, float x0, float x1, float y0, float y1)
             => RemapQuad(q, (x0, y0), (1f - x1, y0), (1f - x1, 1f - y1), (x0, 1f - y1));
 
-        public static Quad3D InsetQuadAbs(this Quad3D q, float inset)
-            => InsetQuadAbs(q, inset, inset, inset, inset);
+        public static Quad3D InsetAbs(this Quad3D q, float inset)
+            => InsetAbs(q, inset, inset, inset, inset);
 
         public static float AbsToRel(this Vector3 a, Vector3 b, float f)
             => f / (b - a).Length;
@@ -251,7 +251,7 @@
         public static float AbsToRel(this Point3D a, Point3D b, float f)
             => f / (b - a).Length;
 
-        public static Quad3D InsetQuadAbs(this Quad3D q, float x0Abs, float x1Abs, float y0Abs, float y1Abs)
+        public static Quad3D InsetAbs(this Quad3D q, float x0Abs, float x1Abs, float y0Abs, float y1Abs)
         {
             var ab = AbsToRel(q.A, q.B, x0Abs);
             var ba = AbsToRel(q.B, q.A, x1Abs);
@@ -306,14 +306,25 @@
 
         public static QuadGrid3D Subdivide(this Quad3D q, int xSegments, int ySegments)
         {
-            var leftSidePoints = q.A.Sample(q.D, ySegments);
-            var rightSidePoints = q.B.Sample(q.C, ySegments);
-            var rows = ySegments.MapRange(i => leftSidePoints[i].Sample(rightSidePoints[i], xSegments));
+            var leftSidePoints = q.A.Sample(q.D, ySegments + 1);
+            var rightSidePoints = q.B.Sample(q.C, ySegments + 1 );
+            var rows = (ySegments + 1).MapRange(i => leftSidePoints[i].Sample(rightSidePoints[i], xSegments + 1));
             return rows.RowsToArray().ToQuadGrid3D(false, false);
         }
 
         public static QuadMesh3D ToQuadMesh3D(this IReadOnlyList<Quad3D> quads)
             => new(quads.SelectMany(q => q.Points).ToList(),
                 quads.Count.MapRange(i => new Integer4(i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3)));
+
+        public static Quad3D UnitXZQuad = ((0, 0, 0), (1, 0, 0), (1, 0, 1), (0, 0, 1));
+
+        public static Quad3D XZQuad(float width, float height) => UnitXZQuad.Scale((width, 1, height));
+
+        public static float GetBottomLength(this Quad3D q)
+            => (q.B - q.A).Length;
+
+        public static float GetHeight(this Quad3D q)
+            => ((q.D - q.A).Length + (q.C - q.B).Length) / 2;
+
     }
 }

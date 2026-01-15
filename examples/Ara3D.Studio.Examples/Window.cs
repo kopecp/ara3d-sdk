@@ -39,8 +39,7 @@ public class Window : IModelGenerator
 
     public IModel3D Eval(EvalContext context)
     {
-        var q = new Quad3D((0, 0, 0), (1, 0, 0), (1, 0, 1), (0, 0, 1));
-        q = q.Scale((Width, 1, Height));
+        var q = GeometryUtil.XZQuad(Width, Height);
         var (frame, pane) = CreateWindow(q, XSegments, YSegments, MullionWidth, PaneInset);
         var meshes = new[] { frame.Triangulate(), pane.Triangulate() };
         var colorFrame = new Color(0.9f, 0.9f, 0.9f, 1f);
