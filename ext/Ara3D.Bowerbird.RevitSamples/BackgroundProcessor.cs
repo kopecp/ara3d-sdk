@@ -73,9 +73,10 @@ namespace Ara3D.Bowerbird.RevitSamples
 
         public void StopPokeThread()
         {
-            CancellationTokenSource.Cancel();
+            CancellationTokenSource?.Cancel();
             CancellationTokenSource?.Dispose();
-            PokeRevitThread.Join();
+            PokeRevitThread?.Join();
+            PokeRevitThread = null;
         }
 
         public void StartPokeThread()
@@ -90,11 +91,11 @@ namespace Ara3D.Bowerbird.RevitSamples
                 {
                     HeartbeatSignal.Reset();
                     Thread.Sleep(HeartBeatMsec);
-                    ExternalEventHeartbeat.Raise();
                     PokeRevit();
                     WaitHandle.WaitAny([HeartbeatSignal, token.WaitHandle], 10000);
                 }
             });
+
             PokeRevitThread.IsBackground = true;
             PokeRevitThread.Priority = ThreadPriority.BelowNormal;
             PokeRevitThread.Start();

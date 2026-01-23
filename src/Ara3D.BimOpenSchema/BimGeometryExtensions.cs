@@ -216,7 +216,8 @@ public static class BimGeometryExtensions
             .AddColumn(self, self.InstanceEntityIndex, nameof(self.InstanceEntityIndex))
             .AddColumn(self, self.InstanceMaterialIndex, nameof(self.InstanceMaterialIndex))
             .AddColumn(self, self.InstanceMeshIndex, nameof(self.InstanceMeshIndex))
-            .AddColumn(self, self.InstanceTransformIndex, nameof(self.InstanceTransformIndex));
+            .AddColumn(self, self.InstanceTransformIndex, nameof(self.InstanceTransformIndex))
+            .AddColumn(self, self.InstanceFlags, nameof(self.InstanceFlags));
 
         r.AddTable(BimGeometry.MeshTableName)
             .AddColumn(self, self.MeshIndexOffset, nameof(self.MeshIndexOffset))
@@ -234,7 +235,7 @@ public static class BimGeometryExtensions
         {
             var materialIndex = bgb.AddMaterial(inst.Material);
             var transformIndex = bgb.AddTransform(inst.Matrix4x4);
-            bgb.AddInstance(inst.EntityIndex, materialIndex, inst.MeshIndex, transformIndex);
+            bgb.AddInstance(inst.EntityIndex, materialIndex, inst.MeshIndex, transformIndex, inst.Flags);
         }
 
         return bgb.BuildModel();
@@ -244,7 +245,7 @@ public static class BimGeometryExtensions
         => self.GetTable(name.ToString());
 
     public static T[] ReadColumn<T>(this IDataSet set, BimGeometryTableName tableName, string columnName)
-        => set.GetTable(tableName).GetColumn(columnName).GetTypedValues<T>();
+        => set.GetTable(tableName).GetColumn(columnName)?.GetTypedValues<T>();
 
     public static BimGeometry ToBimGeometry(this IDataSet self)
     {
@@ -280,19 +281,24 @@ public static class BimGeometryExtensions
         r.InstanceMeshIndex = ReadColumn<int>(self, BimGeometryTableName.Instances, nameof(r.InstanceMeshIndex));
         r.InstanceTransformIndex = ReadColumn<int>(self, BimGeometryTableName.Instances, nameof(r.InstanceTransformIndex));
 
+        // Flags are not present on older files
+        var numInstances = r.InstanceTransformIndex.Length;
+        r.InstanceFlags = ReadColumn<byte>(self, BimGeometryTableName.Instances, nameof(r.InstanceFlags)) ?? new byte[numInstances];
+
         r.MeshIndexOffset = ReadColumn<int>(self, BimGeometryTableName.Meshes, nameof(r.MeshIndexOffset));
         r.MeshVertexOffset = ReadColumn<int>(self, BimGeometryTableName.Meshes, nameof(r.MeshVertexOffset));
 
         return r;
     }
 
-    public static BimModel3D ToModel3D(this IBimData self)
-        => BimModel3D.Create(self);
+    public static BimModel3D ToModel3D(this IBimData self, bool computeParametersAndRelations)
+        => BimModel3D.Create(self, computeParametersAndRelations);
 
     public static Instance GetElement(this BimGeometry self, int i)
         => new(
             self.InstanceEntityIndex[i], 
             self.InstanceMaterialIndex[i], 
             self.InstanceMeshIndex[i],
-            self.InstanceTransformIndex[i]); 
+            self.InstanceTransformIndex[i],
+            self.InstanceFlags[i]); 
 }

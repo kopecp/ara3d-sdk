@@ -2,10 +2,8 @@
 using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Document = Autodesk.Revit.DB.Document;
-using ElementId = Autodesk.Revit.DB.ElementId;
 
 namespace Ara3D.Bowerbird.RevitSamples;
 

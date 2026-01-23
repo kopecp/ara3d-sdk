@@ -87,8 +87,7 @@ namespace Ara3D.BimOpenSchema.Browser
             Model3D = null;
             CurrentFile = fp;
             Data = await fp.ReadBimDataFromParquetZipAsync().ConfigureAwait(false);
-            Model3D = BimModel3D.Create(Data);
-            Model3D.ObjectModel.ComputeParametersAndRelations();
+            Model3D = BimModel3D.Create(Data, true);
             await UpdateTables();
         }
 

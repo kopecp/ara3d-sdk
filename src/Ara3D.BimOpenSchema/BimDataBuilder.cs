@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace Ara3D.BimOpenSchema;
 
@@ -56,11 +57,24 @@ public class BimDataBuilder : IBimData
     public void AddRelation(EntityIndex a, EntityIndex b, RelationType rt)
         => _relations.Add(new(a, b, rt));
 
+    public const StringIndex InvalidStringIndex = (StringIndex)(-1);
+    public const DocumentIndex InvalidDocumentIndex = (DocumentIndex)(-1);
+    public const EntityIndex InvalidEntityIndex = (EntityIndex)(-1);
+
     public EntityIndex AddEntity(long localId, string globalId, DocumentIndex d, string name, EntityIndex category, EntityIndex type)
     {
         _entities.Add(new(localId, AddString(globalId), d, AddString(name), category, type));
         return (EntityIndex)(_entities.Count - 1);
     }
+
+    public EntityIndex AddEntity()
+    {
+        _entities.Add(new(-1, InvalidStringIndex, InvalidDocumentIndex, InvalidStringIndex, InvalidEntityIndex, InvalidEntityIndex));
+        return (EntityIndex)(_entities.Count - 1);
+    }
+
+    public void UpdateEntity(EntityIndex index, long localId, string globalId, DocumentIndex d, string name, EntityIndex category, EntityIndex type)
+        => _entities[(int)index] = new(localId, AddString(globalId), d, AddString(name), category, type);
 
     public DocumentIndex AddDocument(string title, string pathName)
         => (DocumentIndex)Add(_documentLookup, _documents, new(AddString(title), AddString(pathName)));

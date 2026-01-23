@@ -23,12 +23,12 @@ public interface IHostApplication
 public interface IAnimated
 { }
 
-public interface IAnimatedModelGenerator : IScriptedCommand, IAnimated
+public interface IAnimatedModelGenerator : IGenerator, IAnimated
 {
     Model3D Eval(EvalContext context);
 }
 
-public interface IAnimatedModelModifier : IScriptedComponent, IAnimated
+public interface IAnimatedModelModifier : IModelModifier, IAnimated
 {
     Model3D Eval(Model3D model3D, EvalContext context);
 }

@@ -9,6 +9,7 @@ namespace Ara3D.BIMOpenSchema.Tests;
 public static class BosTests
 {
     public static DirectoryPath InputDir => SpecialFolders.MyDocuments.RelativeFolder("BIM Open Schema");
+    //public static string TestFileName = "Autodesk_Hospital_Metric_Architectural_Central.bos";
     public static string TestFileName = "Snowdon Towers Sample Architectural.bos";
     public static FilePath TestFile => InputDir.RelativeFile(TestFileName);
 
@@ -23,17 +24,42 @@ public static class BosTests
         logger.Log("Loaded data");
 
         logger.Log("Creating BIM object model");
-        var bom = new BimObjectModel(bd);
+        var bom = new BimObjectModel(bd, true );
         logger.Log("Created object models");
 
-        bd.OutputDiagnostics(logger);
+        //bd.OutputDiagnostics(logger);
         bd.OutputSummary(logger);
         bg.OutputBimGeometryCounts(logger);
 
+        /*
         logger.Log("Strings");
         for (var i = 0; i < 20; i++)
         {
             logger.Log($"  {bd.Strings[i]}");
+        }
+        */
+
+        GroupAndCountBy("ClassName", em => em.ClassName, bom);
+        GroupAndCountBy("Category", em => em.Category, bom);
+        GroupAndCountBy("CategoryType", em => em.CategoryType, bom);
+        GroupAndCountBy("BuiltInCategory", em => em.BuiltInCategory, bom);
+    }
+
+
+    public static void GroupAndCountBy(string groupType, Func<EntityModel, string> f, BimObjectModel bom)
+    {
+        Console.WriteLine($"Grouping by {groupType}");
+
+        var keysAndCounts = bom
+            .Entities
+            .GroupBy(f)
+            .Select(g => (g.Key, count: g.Count()))
+            .OrderByDescending(pair => pair.count);
+
+        var i = 0;
+        foreach (var kc in keysAndCounts)
+        {
+            Console.WriteLine($"  {i++}. {kc.Key} {kc.count}");
         }
     }
 
@@ -67,6 +93,8 @@ public static class BosTests
         logger.Log($"  # single parameters = {bd.SingleParameters.Count}");
         logger.Log($"  # entity parameters = {bd.EntityParameters.Count}");
 
+        logger.Log($" entities with no element {bd.Entities.Count(e => e.LocalId < 0)}");
+        /*
         var cats = bd.GetCategoryNames();
         logger.Log($"Categories");
         foreach (var cat in cats)
@@ -76,6 +104,7 @@ public static class BosTests
         logger.Log($"Types");
         foreach (var type in types)
             logger.Log($"  {type}");
+        */
     }
 
     public static void OutputBimGeometryCounts(this BimGeometry bimGeometry, ILogger logger)

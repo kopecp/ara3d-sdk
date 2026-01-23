@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Ara3D.Geometry;
@@ -41,7 +40,12 @@ public unsafe struct InstanceStruct
     public int EntityIndex;  //  4 bytes
 
     public uint PackedColor; // 4 bytes: R, G, B, A
-    public uint MetallicRoughness; // (byte 0 == Metallic, byte 1 == Roughness, bytes 3-4 unused)
+
+    public byte Unused; 
+    public byte Flags;
+
+    public byte RoughnessByte;
+    public byte MetallicByte;
 
     // –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
     // Constructors
@@ -54,7 +58,8 @@ public unsafe struct InstanceStruct
         int meshIndex,
         Color color,
         float metallic,
-        float roughness
+        float roughness,
+        byte flags
     )
     {
         EntityIndex = entityIndex;
@@ -63,6 +68,7 @@ public unsafe struct InstanceStruct
         Color = color;
         Metallic = metallic;
         Roughness = roughness;
+        Flags = flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -80,7 +86,8 @@ public unsafe struct InstanceStruct
             meshIndex, 
             mat.Color, 
             mat.Metallic, 
-            mat.Roughness
+            mat.Roughness,
+            0
         )
     { }
 
@@ -90,19 +97,19 @@ public unsafe struct InstanceStruct
     public float Metallic
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => MetallicRoughness.GetByte0().ToNormalizedFloat();
+        get => MetallicByte.ToNormalizedFloat();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => MetallicRoughness = MetallicRoughness.SetByte0(value.ToByteFromNormalized());
+        set => RoughnessByte = value.ToByteFromNormalized();
     }
 
     public float Roughness
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => MetallicRoughness.GetByte1().ToNormalizedFloat();
+        get => MetallicByte.ToNormalizedFloat();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => MetallicRoughness = MetallicRoughness.SetByte1(value.ToByteFromNormalized());
+        set => RoughnessByte = value.ToByteFromNormalized();
     }
 
     public Color Color
@@ -264,10 +271,11 @@ public unsafe struct InstanceStruct
         other.EntityIndex == EntityIndex &&
         other.MeshIndex == MeshIndex &&
         other.Material.Equals(Material) &&
-        other.Matrix4x4.Equals(Matrix4x4);
+        other.Matrix4x4.Equals(Matrix4x4) && 
+        other.Flags.Equals(Flags);
 
     public override int GetHashCode()
-        => HashCode.Combine(EntityIndex, Material, MeshIndex, Matrix4x4);
+        => HashCode.Combine(EntityIndex, Material, MeshIndex, Matrix4x4, Flags);
    
     public override bool Equals(object? obj)
         => obj is InstanceStruct other && Equals(other);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Linq;
 using System.Reflection;
 using System.Windows.Media.Imaging;
 using Ara3D.Bowerbird.Demo;
@@ -132,19 +133,9 @@ namespace Ara3D.Bowerbird.Revit
 
             if (autoRunScript != null)
             {
-                var fp = new FilePath(autoRunScript);
-                if (fp.Exists())
-                {
-                    throw new NotImplementedException("I may re-enable this in the future.");
-                    /*var command = BowerbirdService.Compiler.Assembly.CompileSingleCommand(fp);
-
-                    if (UiApp == null)
-                        UiApp = new UIApplication(e.Document.Application);
-
+                var command = BowerbirdService.Commands.First(c => c.Name == autoRunScript);
+                if (command != null) 
                     command.Execute(UiApp);
-                    */
-
-                }
             }
         }
 

@@ -120,7 +120,7 @@ namespace Ara3D.BIMOpenSchema.Tests
         public static void BimDataObjectModel()
         {
             var bimData = GetTestInputData();
-            var model = new BimObjectModel(bimData);
+            var model = new BimObjectModel(bimData, true);
             Console.WriteLine($"# documents = {model.Documents.Count}");
             Console.WriteLine($"# entities = {model.Entities.Count}");
             Console.WriteLine($"# descriptors = {model.Descriptors.Count}");

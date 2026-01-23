@@ -9,8 +9,12 @@ public class ParametricSurfaceDemo : IModelGenerator
     [Range(0f, 1f)] public float Alpha = 1f;
     [Range(0f, 1f)] public float Metallic = 0f;
     [Range(0f, 1f)] public float Roughness = 0.5f;
-    public bool ClosedU = false;
-    public bool ClosedV = false;
+    //public bool ClosedU = false;
+    //public bool ClosedV = false;
+    [Range(-1f, 1f)] public float StartU = 0f;
+    [Range(-1f, 1f)] public float StartV = 0f;
+    [Range(0f, 2f)] public float RangeU= 1f;
+    [Range(0f, 2f)] public float RangeV = 1f;
     [Range(2, 256)] public int GridSize = 24;
 
     public Dictionary<string, ParametricSurface> SurfaceLookup { get; }
@@ -41,9 +45,8 @@ public class ParametricSurfaceDemo : IModelGenerator
 
     public IModel3D Eval(EvalContext context)
     {
-        var mesh = GetSurface(Surface)
-            .WithClosedUV(ClosedU, ClosedV)
-            .Triangulate(GridSize, GridSize);
+        var surface = GetSurface(Surface).SetDomain((StartU, StartV), (RangeU, RangeV));
+        var mesh = surface.Triangulate(GridSize, GridSize);
         return Model3D.Create(mesh, Material);
     }
 }

@@ -34,25 +34,29 @@ public sealed record Geometry
 /// </summary>
 public class BosMeshGatherer
 {
-    public BosDocumentBuilder BosDocumentBuilder { get; }
-    public Options Options => BosDocumentBuilder.BosRevitBuilder.Options;
+    public BosRevitBuilder BosRevitBuilder { get; }
+    public Options Options => BosRevitBuilder.Options;
+
     public Document CurrentDocument => BosDocumentBuilder.Document;
+    public BosDocumentBuilder BosDocumentBuilder { get; private set; }
 
     public List<Mesh> MeshList { get; } = [];
     public List<Geometry> Geometries { get; } = [];
   
     private readonly Dictionary<string, IReadOnlyList<GeometryPart>> _symbolCache = new();
 
-    public BosMeshGatherer(BosDocumentBuilder docBuilder)
+    public BosMeshGatherer(BosRevitBuilder bldr)
+    {
+        BosRevitBuilder = bldr;
+    }
+
+    public void AddElement(BosDocumentBuilder docBuilder, Element e)
     {
         BosDocumentBuilder = docBuilder;
         var transform = docBuilder.DocumentContext.Transform;
-        foreach (var e in BosDocumentBuilder.GetElements())
-        { 
-            var g = ComputeGeometry(e, transform);
-            if (g != null)
-                Geometries.Add(g);
-        }
+        var g = ComputeGeometry(e, transform);
+        if (g != null)
+            Geometries.Add(g);
     }
 
     public Geometry ComputeGeometry(Element e, Transform transform)

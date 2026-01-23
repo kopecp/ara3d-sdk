@@ -22,7 +22,7 @@
         public TriangleMesh3D ColumnMesh(Point3D position, Number height, Number radius)
         {
             var poly = new RegularPolygon(Point2D.Zero, 32).ToPolyLine3D().Scale(radius / 2f);
-            var mesh = poly.Points.Extrude(Height);
+            var mesh = poly.Points.Extrude(height);
             return mesh.Triangulate();
         }
 

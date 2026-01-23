@@ -17,6 +17,12 @@ public static class ParametricSurfaceExtensions
         return new QuadGrid3D(points, surface.ClosedU, surface.ClosedV);
     }
 
+    public static Vector2 RemapUV(Vector2 uv, Vector2 startUV, Vector2 extentUV)
+        => (uv * extentUV) - startUV;
+
+    public static ParametricSurface SetDomain(this ParametricSurface surface, Vector2 startUV, Vector2 extentUV)
+        => new(uv => surface.Eval(RemapUV(uv, startUV, extentUV)), surface.ClosedU, surface.ClosedV);
+
     public static TriangleMesh3D Triangulate(this ParametricSurface surface, int numColumns, int numRows = 0)
         => surface.ToQuadGrid(numColumns, numRows).Triangulate();
 }

@@ -1,6 +1,7 @@
 ﻿using Ara3D.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Ara3D.BimOpenSchema
@@ -14,11 +15,13 @@ namespace Ara3D.BimOpenSchema
         public IBimData Data;
         public BimGeometry Geometry => Data.Geometry;
 
+        private bool _parametersComputed;
+
         public List<DocumentModel> Documents { get; } = new();
         public List<EntityModel> Entities { get; } = new();
         public List<DescriptorModel> Descriptors { get; } = new();
 
-        public BimObjectModel(IBimData data)
+        public BimObjectModel(IBimData data, bool computeParametersAndRelations)
         {
             Data = data;
 
@@ -45,10 +48,17 @@ namespace Ara3D.BimOpenSchema
                     }
                 }
             }
+
+            if (computeParametersAndRelations)
+                ComputeParametersAndRelations();
         }
 
         public void ComputeParametersAndRelations()
         {
+            // This is probably a mistake 
+            Debug.Assert(!_parametersComputed);
+            _parametersComputed = true;
+
             Descriptors.AddRange(Data.DescriptorIndices().Select(di => Create(di,Data.Get(di))));
 
             foreach (var p in Data.SingleParameters)
@@ -123,6 +133,7 @@ namespace Ara3D.BimOpenSchema
         public long LocalId => Entity.LocalId;
         public string GlobalId => Data.Get(Entity.GlobalId);
         public string Category => GetEntityModel(Entity.Category)?.Name;
+        public string BuiltInCategory => GetEntityModel(Entity.Category)?.GetParameterAsString(CommonRevitParameters.CategoryBuiltInType);
         public string Name => Data.Get(Entity.Name);
         public bool HasGeometry => Instances.Count > 0;
 
@@ -130,7 +141,7 @@ namespace Ara3D.BimOpenSchema
             => ei < 0 ? null : Model.Entities[(int)ei];
 
         // Commonly present data stored in parameters
-        public string CategoryType => GetEntityModel(Entity.Category)?.GetParameterAsString(CommonRevitParameters.CategoryBuiltInType);
+        public string CategoryType => GetEntityModel(Entity.Category)?.GetParameterAsString(CommonRevitParameters.CategoryCategoryType);
         public string ClassName => GetParameterAsString(CommonRevitParameters.ObjectTypeName);
         public string LevelName => GetParameterAsEntity(CommonRevitParameters.ElementLevel)?.Name;
         public string GroupName => GetParameterAsEntity(CommonRevitParameters.ElementGroup)?.Name;

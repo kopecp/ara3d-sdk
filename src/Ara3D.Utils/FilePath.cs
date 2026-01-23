@@ -16,7 +16,7 @@ namespace Ara3D.Utils
         public FilePath(string path)
         {
             Value = path;
-            FullPath = Path.GetFullPath(path);
+            FullPath = string.IsNullOrEmpty(path) ? "" : Path.GetFullPath(path);
         }
 
         public override string ToString() => Value;

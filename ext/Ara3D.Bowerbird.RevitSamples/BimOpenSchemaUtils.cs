@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using Ara3D.Utils;
+﻿using Ara3D.Utils;
 using System.IO;
 using System.IO.Compression;
 using Ara3D.BimOpenSchema;
-using Ara3D.BimOpenSchema.IO;
 using Ara3D.Collections;
 using Ara3D.Extras;
 using Ara3D.Logging;
 using Autodesk.Revit.DB;
 using Parquet;
-using ZstdSharp.Unsafe;
 using Document = Autodesk.Revit.DB.Document;
 using FilePath = Ara3D.Utils.FilePath;
 using Material = Ara3D.Models.Material;
@@ -27,7 +21,7 @@ namespace Ara3D.Bowerbird.RevitSamples
             if (demoPhase != ElementId.InvalidElementId)
                 return false;
             var cat = g.Element.Category;
-            if (cat == null)
+            if (cat == null) 
                 return false;
             if (cat.CategoryType != CategoryType.Model)
                 return false;
@@ -36,88 +30,38 @@ namespace Ara3D.Bowerbird.RevitSamples
             return true;
         }
 
-        public static void BuildGeometry(this BosDocumentBuilder bdb, BimGeometryBuilder builder)
+        public static void BuildGeometry(this BosMeshGatherer meshGatherer, BimGeometryBuilder builder)
         {
-            var meshGatherer = new BosMeshGatherer(bdb);
-
             var meshOffset = builder.Meshes.Count;
             builder.Meshes.AddRange(meshGatherer.MeshList.Select(m => m.ToAra3D()));
 
-            var geometries = meshGatherer.Geometries.Where(IsVis).ToList();
+            var geometries = meshGatherer.Geometries;
             foreach (var g in geometries)
             {
                 if (g == null)
                     continue;
 
+                var isHidden = IsVis(g) ? (byte)0 : (byte)1;
                 var defaultMatIndex = builder.AddMaterial(g.DefaultMaterial ?? Material.Default);
                 foreach (var part in g.Parts)
                 {
-                    var matIndex = part.Material == null 
+                    var matIndex = part.Material == null    
                         ? defaultMatIndex 
                         : builder.AddMaterial(part.Material.Value);
 
                     var transformIndex = builder.AddTransform(part.Transform.ToAra3D());
-                    builder.AddInstance((int)g.EntityIndex, matIndex, part.MeshIndex + meshOffset, transformIndex);
+                    builder.AddInstance((int)g.EntityIndex, matIndex, part.MeshIndex + meshOffset, transformIndex, isHidden);
                 }
             }
         }
 
-        public static FilePath ExportBimOpenSchema(this Document currentDoc, BimOpenSchemaExportSettings settings, ILogger logger)
+        public static FilePath ExportBimOpenSchema(this BosRevitBuilder bosRevitBuilder, BimOpenSchemaExportSettings settings, ILogger logger)
         {
-            // TODO: move all of this into the Revit Builder 
-
-            logger.Log($"Exporting BIM Open Schema Parquet Files");
-
-            var useView = settings.UseCurrentView && settings.IncludeGeometry;
-            
-            var view = useView 
-                ? currentDoc.ActiveView
-                : null;
-
-            if (useView)
-            {
-                // TODO: take it out of the UI
-                throw new Exception("View based export not currently supported");
-                //if (view == null) throw new Exception("No default view present, can't export");
-                //logger.Log($"Exporting view {view.Name}");
-            }
-
-            var options = useView ?
-                new Options()
-                {
-                    ComputeReferences = true,
-                    View = view,
-                }
-                : new Options()
-                {
-                    ComputeReferences = true,
-                    DetailLevel = (ViewDetailLevel)settings.DetailLevel,
-                };
-
-            logger.Log($"Create Revit builder and gather links");
-            var bosRevitBuilder = new BosRevitBuilder(options, settings);
-            var context = new BosDocumentContext(bosRevitBuilder, currentDoc);
-            var docs = context.GatherLinkedDocuments();
-            if (!settings.IncludeLinks)
-                docs = [context];
-
-            logger.Log($"Parse core documents {docs.Count}");
-            var docBuilders = new List<BosDocumentBuilder>();
-            for (var i = 0; i < docs.Count; i++)
-            {
-                var localDocBuilder = new BosDocumentBuilder(bosRevitBuilder, docs[i]);
-                docBuilders.Add(localDocBuilder);
-                localDocBuilder.ProcessDocument();
-            }
-
             logger.Log($"Creating BIM data");
-            var bimData = bosRevitBuilder.BimDataBuilder;
-            var dataSet = bimData.ToDataSet();
-
-            var inputFile = new FilePath(currentDoc.PathName);
-            var fp = inputFile.ChangeDirectoryAndExt(settings.Folder, "bos");
+            var dataSet = bosRevitBuilder.BimDataBuilder.ToDataSet();
 
             logger.Log($"Creating FileStream");
+            var fp = bosRevitBuilder.InputPath.ChangeDirectoryAndExt(settings.Folder, "bos");
             var fs = new FileStream(fp, FileMode.Create, FileAccess.Write, FileShare.None);
 
             logger.Log($"Creating Zip Archive");
@@ -129,27 +73,37 @@ namespace Ara3D.Bowerbird.RevitSamples
 
             logger.Log($"Writing non-geometry data to Zip file {fp}");
             dataSet.WriteParquetToZip(zip,
-            parquetCompressionMethod,
-                    parquetCompressionLevel,
-                    zipCompressionLevel);
+                parquetCompressionMethod,
+                parquetCompressionLevel,
+                zipCompressionLevel);
 
             if (settings.IncludeGeometry)
             {
-                logger.Log($"Creating BIM Geometry");
-
-                var bgb = new BimGeometryBuilder();
-                foreach (var docBuilder in docBuilders)
-                {
-                    BuildGeometry(docBuilder, bgb);
-                }
-                
                 logger.Log($"Writing BIM geometry");
-                var bg = bgb.BuildModel();
+                var bg = bosRevitBuilder.GeometryBuilder.BuildModel();
                 bg.WriteParquetToZip(zip, parquetCompressionMethod, parquetCompressionLevel, zipCompressionLevel);
             }
 
             logger.Log($"Finished writing to {fp}");
             return fp;
         }
+
+        public static FilePath ExportBimOpenSchema(this Document currentDoc, BimOpenSchemaExportSettings settings, ILogger logger)
+        {
+            logger.Log($"Exporting BIM Open Schema Parquet Files");
+
+            var options = new Options()
+            {
+                ComputeReferences = false,
+                DetailLevel = (ViewDetailLevel)settings.DetailLevel,
+            };
+
+            logger.Log($"Create Revit builder and gather links");
+            var bosRevitBuilder = new BosRevitBuilder(options, settings, currentDoc, e => true);
+            return ExportBimOpenSchema(bosRevitBuilder, settings, logger);
+        }
+
+        public static void BuildGeometry(this BosRevitBuilder self)
+            => self.MeshGatherer.BuildGeometry(self.GeometryBuilder);
     }
 }

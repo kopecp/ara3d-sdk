@@ -95,7 +95,11 @@ namespace Ara3D.Utils.Roslyn
                 .ToList();
             foreach (var fp in filesToDelete)
             {
-                fp.Delete();
+                try
+                {
+                    fp.Delete();
+                }
+                catch { }
             }
         }
 

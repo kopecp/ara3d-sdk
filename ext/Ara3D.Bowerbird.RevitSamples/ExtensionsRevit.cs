@@ -7,7 +7,6 @@ using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Controls.Ribbon;
 using Arc = Autodesk.Revit.DB.Arc;
 
 namespace Ara3D.Bowerbird.RevitSamples

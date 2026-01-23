@@ -10,7 +10,8 @@ public record Instance(
     int EntityIndex, 
     int MaterialIndex,
     int MeshIndex,
-    int TransformIndex);
+    int TransformIndex,
+    byte Flags);
 
 /// <summary>
 /// This class is provided to make it easier to build a BIM geometry object incrementally. 
@@ -34,9 +35,9 @@ public class BimGeometryBuilder
     public int AddMaterial(Material material)
         => Materials.Add(material);
 
-    public int AddInstance(int entityIndex, int materialIndex, int meshIndex, int transformIndex)
+    public int AddInstance(int entityIndex, int materialIndex, int meshIndex, int transformIndex, byte flags)
     {
-        var es = new Instance(entityIndex, materialIndex, meshIndex, transformIndex);
+        var es = new Instance(entityIndex, materialIndex, meshIndex, transformIndex, flags);
         Instances.Add(es);
         return Instances.Count - 1;
     }
@@ -51,16 +52,18 @@ public class BimGeometryBuilder
             InstanceEntityIndex = new int[Instances.Count],
             InstanceMaterialIndex = new int[Instances.Count],
             InstanceMeshIndex = new int[Instances.Count],
-            InstanceTransformIndex = new int[Instances.Count]
+            InstanceTransformIndex = new int[Instances.Count],
+            InstanceFlags = new byte[Instances.Count]
         };
 
         for (var i = 0; i < Instances.Count; i++)
         {
-            var e = Instances[i];
-            r.InstanceEntityIndex[i] = e.EntityIndex;
-            r.InstanceMaterialIndex[i] = e.MaterialIndex;
-            r.InstanceMeshIndex[i] = e.MeshIndex;
-            r.InstanceTransformIndex[i] = e.TransformIndex;
+            var inst = Instances[i];
+            r.InstanceEntityIndex[i] = inst.EntityIndex;
+            r.InstanceMaterialIndex[i] = inst.MaterialIndex;
+            r.InstanceMeshIndex[i] = inst.MeshIndex;
+            r.InstanceTransformIndex[i] = inst.TransformIndex;
+            r.InstanceFlags[i] = inst.Flags;
         }
 
         var verticesX = new List<int>();

@@ -12,7 +12,6 @@ namespace Ara3D.Bowerbird.RevitSamples
                 Folder = BimOpenSchemaExportSettings.DefaultFolder,
                 IncludeLinks = true,
                 IncludeGeometry = true,
-                UseCurrentView = false,
             };
 
         public void ExportFile(UIApplication app, string file)
