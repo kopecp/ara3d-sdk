@@ -1,6 +1,6 @@
 ﻿namespace Ara3D.Studio.Samples;
 
-public class RotatedPlatforms : IModelGenerator
+public class RotatedPlatforms : IGenerator
 {
     [Range(1, 200)] public int Count = 8;
     [Range(0.01, 100)] public float Width = 10;

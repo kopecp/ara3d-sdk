@@ -81,10 +81,11 @@ public static class BimGeometryExtensions
 
     public static InstanceStruct GetInstanceStruct(this BimGeometry self, int instanceIndex)
         => new(
-            self.InstanceEntityIndex[instanceIndex],
+            self.InstanceEntityIndex[instanceIndex],    
             self.GetInstanceMatrix(instanceIndex), 
             self.InstanceMeshIndex[instanceIndex], 
-            self.GetInstanceMaterial(instanceIndex));
+            self.GetInstanceMaterial(instanceIndex),
+            self.InstanceFlags[instanceIndex]);
 
     public static Material GetMaterial(this BimGeometry self, int materialIndex)
         => new(

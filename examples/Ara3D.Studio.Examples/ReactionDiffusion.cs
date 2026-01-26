@@ -171,7 +171,7 @@ public static class ReactionDiffusion2D
 }
 
 [OnDemand]
-public class ReactionDiffusion : IModelGenerator
+public class ReactionDiffusion : IGenerator
 {
     // Example parameters known to yield nice patterns:
     //  - Coral-like:   F=0.0545, k=0.062, steps ~ 20_000

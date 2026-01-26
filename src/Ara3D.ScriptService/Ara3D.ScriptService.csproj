@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Ara3D.PropKit\Ara3D.PropKit.csproj" />
     <ProjectReference Include="..\Ara3D.Services\Ara3D.Services.csproj" />
+    <ProjectReference Include="..\Ara3D.Studio.API\Ara3D.Studio.API.csproj" />
     <ProjectReference Include="..\Ara3D.Utils.Roslyn\Ara3D.Utils.Roslyn.csproj" />
   </ItemGroup>
 </Project>

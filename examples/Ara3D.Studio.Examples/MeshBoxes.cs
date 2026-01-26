@@ -1,6 +1,6 @@
 ﻿namespace Ara3D.Studio.Samples;
 
-public class MeshBoxes : IModelModifier
+public class MeshBoxes : IModifier
 {
     public bool Oriented = true;
     public bool Disabled = false;

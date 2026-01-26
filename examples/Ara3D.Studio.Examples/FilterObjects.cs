@@ -1,6 +1,6 @@
 ﻿namespace Ara3D.Studio.Samples;
 
-public class FilterObjects : IModelModifier
+public class FilterObjects : IModifier
 {
     [Range(0, 20)] public int ObjectComplexity = 2;
 

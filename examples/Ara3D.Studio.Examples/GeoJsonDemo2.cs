@@ -2,7 +2,7 @@
 
 namespace Ara3D.Studio.Samples;
 
-public class GeoJsonDemo : IModelGenerator
+public class GeoJsonDemo : IGenerator
 {
     [Range(0f, 2f)] public float Thickness = 0.1f;
     [Range(0f, 10f)] public float Height = 2;

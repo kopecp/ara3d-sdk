@@ -22,8 +22,9 @@ public class RenderModelData : IDisposable
     public UnmanagedList<uint> IndexBuffer { get; private set; }
     public UnmanagedList<MeshSliceStruct> MeshBuffer { get; private set; }
     public UnmanagedList<InstanceStruct> InstanceBuffer { get; private set; } 
-    public UnmanagedList<Bounds3D> MeshBounds { get; private set; }
-    
+    public UnmanagedList<Bounds3D> MeshBounds { get; }
+    public UnmanagedList<Bounds3D> InstanceBounds { get; }
+
     public long TotalVertexCount { get; private set; }
     public long TotalFaceCount { get; private set; }
 
@@ -44,6 +45,7 @@ public class RenderModelData : IDisposable
         MeshBuffer = new();
         InstanceBuffer = new();
         MeshBounds = new();
+        InstanceBounds = new();
     }
     
     public bool IsModel3D
@@ -74,6 +76,7 @@ public class RenderModelData : IDisposable
         IndexBuffer?.Clear();
         MeshBuffer?.Clear();
         InstanceBuffer?.Clear();
+        TotalBounds = Bounds3D.Empty;
     }
 
     public void Update(
@@ -101,7 +104,6 @@ public class RenderModelData : IDisposable
     public void Update(RenderModelData data)
     {
         PrimitiveSize = data.PrimitiveSize;
-
         UpdateVertexBuffer(data.VertexBuffer);
         UpdateIndexBuffer(data.IndexBuffer);
         UpdateMeshBuffer(data.MeshBuffer);
@@ -109,6 +111,9 @@ public class RenderModelData : IDisposable
         ValidateMeshSlices();
         MeshBounds.Clear();
         MeshBounds.AddRange(data.MeshBounds);
+        InstanceBounds.Clear();
+        InstanceBounds.AddRange(data.InstanceBounds);
+        TotalBounds = data.TotalBounds;
     }
 
     public void Update(IModel3D model)
@@ -223,7 +228,7 @@ public class RenderModelData : IDisposable
             IndexBuffer.Add((uint)index2.B.Value);
         }
 
-        var inst = new InstanceStruct(-1, transform, 0, material);
+        var inst = new InstanceStruct(-1, transform, 0, material, 0);
 
         InstanceBuffer.Add(inst);
         ValidateMeshSlices();
@@ -244,39 +249,50 @@ public class RenderModelData : IDisposable
 #endif
     }
 
-    public Bounds3D ComputeBounds(IBuffer<Point3D> points)
+    public Bounds3D ComputeBounds(MeshSliceStruct slice)
     {
-        var span = points.Reinterpret<SNVector3>().AsReadOnlySpan();
-        var (min, max) = span.ComputeBounds();
-        return new(new Vector3(min), new Vector3(max));
+        var points = GetPoints(slice);
+        var indices = GetIndices(slice);
+        var r = Bounds3D.Empty;
+        for (var i=0; i < indices.Count; i++)
+            r = r.Include(points[i]);
+        return r;
+    }
+
+    public void RecomputeMeshBounds()
+    {
+        MeshBounds.Clear();
+        foreach (var meshSlice in MeshBuffer)
+            MeshBounds.Add(ComputeBounds(meshSlice));
+    }
+
+    public void RecomputeInstanceBounds()
+    {
+        InstanceBounds.Clear();
+        foreach (var inst in InstanceBuffer)
+        {
+            if (inst.MeshIndex < 0 && inst.IsVisible)
+            {
+                InstanceBounds.Add(Bounds3D.Empty);
+            }
+            else
+            {
+                var meshBounds = MeshBounds[inst.MeshIndex];
+                InstanceBounds.Add(meshBounds.FastTransform(inst.Matrix4x4));
+            }
+        }
     }
 
     public void RecomputeBounds()
     {
-        MeshBounds.Clear();
-        foreach (var meshSlice in MeshBuffer)
-        {
-            var points = GetPoints(meshSlice);
-            var bounds = ComputeBounds(points);
-            MeshBounds.Add(bounds);
-        }
+        RecomputeMeshBounds();
+        RecomputeInstanceBounds();
+        RecomputeTotalBounds();
+    }
 
-        TotalBounds = Bounds3D.Empty;
-        TotalFaceCount = 0;
-        TotalVertexCount = 0;
-        foreach (var inst in InstanceBuffer)
-        {
-            if (inst.MeshIndex < 0) 
-                continue;
-            var localMeshSlice = MeshBuffer[inst.MeshIndex];
-            var localBounds = MeshBounds[inst.MeshIndex];
-            TotalFaceCount += localMeshSlice.IndexCount / PrimitiveSize;
-            TotalVertexCount += localMeshSlice.VertexCount;
-            if (localBounds.Size.X < 0 || localBounds.Size.Y < 0 || localBounds.Size.Z < 0)
-                continue;
-            var transformedBounds = localBounds.Transform(inst.Matrix4x4);
-            TotalBounds = TotalBounds.Include(transformedBounds);
-        }
+    public void RecomputeTotalBounds()
+    {
+        TotalBounds = InstanceBounds.GetTotalBoundsTrimOutliers();
     }
 
     public TriangleMesh3D GetMesh(MeshSliceStruct meshSlice)
@@ -290,4 +306,7 @@ public class RenderModelData : IDisposable
 
     public IBuffer<Point3D> GetPoints(MeshSliceStruct meshSlice)
         => BufferExtensions.Slice(VertexBuffer?.Reinterpret<Point3D>(), meshSlice.BaseVertex, meshSlice.VertexCount);
-}
+
+    public IBuffer<int> GetIndices(MeshSliceStruct meshSlice)
+        => BufferExtensions.Slice(IndexBuffer?.Reinterpret<int>(), meshSlice.FirstIndex, meshSlice.IndexCount);
+    }

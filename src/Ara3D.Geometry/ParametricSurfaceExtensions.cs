@@ -25,4 +25,8 @@ public static class ParametricSurfaceExtensions
 
     public static TriangleMesh3D Triangulate(this ParametricSurface surface, int numColumns, int numRows = 0)
         => surface.ToQuadGrid(numColumns, numRows).Triangulate();
+
+    public static ParametricSurface Repeat(this ParametricSurface surface, float repeatU, float repeatV)
+        => new(uv => surface.Eval((repeatU * uv.X, repeatV * uv.Y)), surface.ClosedU, surface.ClosedV);
+
 }

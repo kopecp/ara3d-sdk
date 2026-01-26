@@ -1,7 +1,7 @@
-﻿
-namespace Ara3D.Studio.Samples;
+﻿namespace Ara3D.Studio.Samples;
 
-public class SweepDemo : IModelGenerator
+[Category(nameof(Categories.Demos))]
+public class SweepDemo : IGenerator
 {
     [Range(1, 100)] public int SampleCount = 16;
     [Range(-10, 10)] public float Height = 3;
@@ -18,7 +18,7 @@ public class SweepDemo : IModelGenerator
         var list = new List<Transform3D>();
         for (var i = 0; i <= count; i++)
         {
-            var t0 = (float)i / (count);
+            var t0 = (float)i / count;
             var t1 = t0 + 0.001f;
             var pos0 = curve.Eval(t0);
             var pos1 = curve.Eval(t1);

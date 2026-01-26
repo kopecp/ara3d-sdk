@@ -1,7 +1,4 @@
-﻿using Autodesk.Revit.DB.Events;
-using DocumentFormat.OpenXml.Office.SpreadSheetML.Y2023.MsForms;
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.Windows.Forms;
 
 namespace Ara3D.Bowerbird.RevitSamples

@@ -1,6 +1,6 @@
 ﻿namespace Ara3D.Studio.Samples
 {
-    public class GeometryStats : IModelModifier
+    public class GeometryStats : IModifier
     {
         public class MeshStats
         {

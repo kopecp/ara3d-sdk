@@ -1,6 +1,6 @@
 ﻿namespace Ara3D.Studio.Samples;
 
-public class VoxelDemo : IModelGenerator
+public class VoxelDemo : IGenerator
 {
     [Range(1, 128)] public int GridSize = 16;
     [Range(0, 1)] public float Threshold = 0.05f;

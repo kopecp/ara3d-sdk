@@ -39,9 +39,10 @@
                 (t * revolutions).Turns.Cos,
                 t * height));
 
-        public static Curve3D Spiral(Number revolutions, Number height)
+        public static Curve3D Spiral(Number revolutions, Number innerRadius, Number outerRadius)
             => new(t => new Vector3(
                 (t * revolutions).Turns.Sin,
-                (t * revolutions).Turns.Cos, height * (1f - t)) * t);
+                (t * revolutions).Turns.Cos, 
+                0) * innerRadius.Lerp(outerRadius, t));
     }
 }

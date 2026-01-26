@@ -6,6 +6,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <UseWpf>true</UseWpf>
     <Platforms>AnyCPU;x64</Platforms>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +17,10 @@
     <ProjectReference Include="..\..\src\Ara3D.Geometry\Ara3D.Geometry.csproj" />
     <ProjectReference Include="..\..\src\Ara3D.Models\Ara3D.Models.csproj" />
     <ProjectReference Include="..\..\src\Ara3D.Studio.API\Ara3D.Studio.API.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 ﻿namespace Ara3D.Studio.Samples;
 
-public class GridDemo : IModelGenerator
+public class GridDemo : IGenerator
 {
     [Range(1, 256)] public int NumRows = 16;
     [Range(1, 256)] public int NumColumns = 16;

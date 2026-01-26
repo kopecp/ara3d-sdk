@@ -13,6 +13,6 @@ namespace Ara3D.ScriptService
         bool AutoRecompile { get; set; }
         ILogger Logger { get; set; }
         void Compile();
-        IReadOnlyList<ScriptType> Types { get; }
+        IReadOnlyList<Script> Types { get; }
     }
 }

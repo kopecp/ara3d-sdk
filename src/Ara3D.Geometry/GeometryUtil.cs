@@ -442,5 +442,83 @@
             => Matrix4x4.CreateScale(1, 1, line.Length)
                 * Vector3.UnitZ.RotateTo(line.Direction)
                 * Matrix4x4.CreateTranslation(line.A);
+
+        public static LineMesh3D ToLineMesh(this IReadOnlyList<Point3D> points, bool closed)
+        {
+            var lines = new List<Integer2>();
+            for (var i = 0; i < points.Count - 1; i++)
+                lines.Add((i, i + 1));
+            if (closed)
+                lines.Add((points.Count - 1, 0));
+            return new(points, lines);
+        }
+
+        public static Bounds3D FastTransform(this Bounds3D b, Matrix4x4 m)
+        {
+            // Center / extents in local space
+            var c = (b.Min + b.Max) * 0.5f;
+            var e = (b.Max - b.Min) * 0.5f;
+
+            // Transform center (full affine)
+            var c4 = new Vector4(c.X, c.Y, c.Z, 1f).Transform(m);
+            var ct = new Vector3(c4.X, c4.Y, c4.Z);
+
+            // Upper-left 3x3 of m (System.Numerics is row-major fields Mij)
+            // Compute new extents using absolute value of linear part
+            var ex = MathF.Abs(m.M11) * e.X + MathF.Abs(m.M21) * e.Y + MathF.Abs(m.M31) * e.Z;
+            var ey = MathF.Abs(m.M12) * e.X + MathF.Abs(m.M22) * e.Y + MathF.Abs(m.M32) * e.Z;
+            var ez = MathF.Abs(m.M13) * e.X + MathF.Abs(m.M23) * e.Y + MathF.Abs(m.M33) * e.Z;
+
+            var et = new Vector3(ex, ey, ez);
+
+            return new(ct - et, ct + et);
+        }
+
+        public static Vector3 Median(this IReadOnlyList<Vector3> pts)
+        {
+            // Simple approach: copy to arrays and sort each axis.
+            var xs = new float[pts.Count];
+            var ys = new float[pts.Count];
+            var zs = new float[pts.Count];
+            for (int i = 0; i < pts.Count; i++)
+            {
+                xs[i] = pts[i].X; ys[i] = pts[i].Y; zs[i] = pts[i].Z;
+            }
+            Array.Sort(xs); 
+            Array.Sort(ys); 
+            Array.Sort(zs);
+            int mid = pts.Count / 2;
+            return new Vector3(xs[mid], ys[mid], zs[mid]);
+        }
+
+        public static float Quantile(this IReadOnlyList<float> values, float q)
+        {
+            // q in [0,1]. Uses selection-by-sorting; fine for thousands of instances.
+            var tmp = values.ToArray();
+            Array.Sort(tmp);
+            int idx = (int)MathF.Round(q * (tmp.Length - 1));
+            idx = Math.Clamp(idx, 0, tmp.Length - 1);
+            return tmp[idx];
+        }
+
+        public static Point3D GetMedianCenter(this IReadOnlyList<Bounds3D> bounds)
+            => bounds.Map(b => b.Center.Vector3).Median();
+
+        public static Bounds3D GetTotalBoundsTrimOutliers(this IReadOnlyList<Bounds3D> bounds, float trimFraction = 0.1f)
+        {
+            var center = GetMedianCenter(bounds);
+            var distances = bounds.Map(b => b.Center.Vector3.Distance(center).Value);
+            
+            // Find distance cutoff at (1-trimFraction) quantile
+            var cutoff = Quantile(distances, 1.0f - trimFraction);
+
+            // Union only inliers
+            var total = Bounds3D.Empty;
+            for (int i = 0; i < bounds.Count; i++)
+                if (distances[i] <= cutoff)
+                    total = total.Include(bounds[i]);
+
+            return total;
+        }
     }
 }

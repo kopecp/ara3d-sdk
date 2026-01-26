@@ -43,20 +43,20 @@ public static class SurfaceConstructors
             .RowsToArray()
             .ToQuadGrid3D(false, true);
 
-    public static QuadGrid3D Extrude(this IReadOnlyList<Point3D> points, Vector3 vector)
-        => RowsToArray([points, points.Translate(vector)]).ToQuadGrid3D(false, false);
-    
-    public static QuadGrid3D Extrude(this IReadOnlyList<Point3D> points, Vector3 vector, int count)
-        => RowsToArray(count.MapRange(i => points.Translate(vector * i))).ToQuadGrid3D(false, false);
+    public static QuadGrid3D Extrude(this IReadOnlyList<Point3D> points, Vector3 vector, int count = 1)
+        => RowsToArray((count + 1).MapRange(i => points.Translate(vector * i))).ToQuadGrid3D(false, false);
 
-    public static QuadGrid3D Extrude(this IReadOnlyList<Point3D> points, Number height)
-        => points.Extrude(height * Vector3.UnitZ);
+    public static QuadGrid3D Extrude(this IReadOnlyList<Point3D> points, Number height, int count = 1)
+        => points.Extrude(height * Vector3.UnitZ, count);
 
-    public static QuadGrid3D Extrude(this IReadOnlyList<Point2D> points, Number height)
-        => points.To3D().Extrude(height);
+    public static QuadGrid3D Extrude(this IReadOnlyList<Point2D> points, Vector3 vector, int count = 1)
+        => points.To3D().Extrude(vector, count);
 
-    public static QuadGrid3D Extrude(this RegularPolygon polygon, Number height)
-        => polygon.Points.To3D().Extrude(height);
+    public static QuadGrid3D Extrude(this IReadOnlyList<Point2D> points, Number height, int count = 1)
+        => points.To3D().Extrude(height, count);
+
+    public static QuadGrid3D Extrude(this RegularPolygon polygon, Number height, int count = 1)
+        => polygon.Points.To3D().Extrude(height, count);
 
     public static QuadMesh3D ToQuadMesh3D(this QuadGrid3D grid)
         => new(grid.Points, grid.FaceIndices);

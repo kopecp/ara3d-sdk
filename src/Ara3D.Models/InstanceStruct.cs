@@ -16,6 +16,10 @@ namespace Ara3D.Models;
 public unsafe struct InstanceStruct
 {
     // –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
+    // Constant flags
+    public const byte HiddenFlag = 0x1;
+
+    // –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
     // Static properties 
     public static readonly uint Size = (uint)sizeof(InstanceStruct);
 
@@ -77,7 +81,8 @@ public unsafe struct InstanceStruct
         int entityIndex,
         Matrix4x4 transform,
         int meshIndex,
-        Material mat
+        Material mat,
+        byte flags
     )
         : this
         (
@@ -87,7 +92,7 @@ public unsafe struct InstanceStruct
             mat.Color, 
             mat.Metallic, 
             mat.Roughness,
-            0
+            flags
         )
     { }
 
@@ -282,4 +287,7 @@ public unsafe struct InstanceStruct
 
     public override string ToString()
         => $"Mesh={MeshIndex},Entity={EntityIndex},Material={Material}";
+
+    public bool IsVisible
+        => (Flags & HiddenFlag) == 0;
 }

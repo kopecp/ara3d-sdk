@@ -1,4 +1,4 @@
-public class GlbDataSet: IModelModifier
+public class GlbDataSet: IModifier
 {
     public string TableNames { get; private set; }
 

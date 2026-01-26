@@ -20,7 +20,7 @@ public class ScriptingService :
     public ILogger Logger { get; set; }
     public ScriptingOptions Options { get; }
     public Assembly Assembly { get; set; }
-    public IReadOnlyList<ScriptType> Types { get; private set; } = [];
+    public IReadOnlyList<Script> Types { get; private set; } = [];
 
     public ScriptingService(IServiceManager app, ILogger logger, ScriptingOptions options)
         : base(app)
@@ -77,11 +77,11 @@ public class ScriptingService :
                 if (asmFile != null && asmFile?.Exists() == true)
                 {
                     Assembly = Assembly.LoadFile(asmFile);
-                    var scriptTypes = new List<ScriptType>();
+                    var scriptTypes = new List<Script>();
                     foreach (var type in Assembly?.ExportedTypes ?? [])
                     {
                         var path = typeNameToFilePath.GetValueOrDefault(type.FullName ?? "");
-                        scriptTypes.Add(new ScriptType(type, path));
+                        scriptTypes.Add(new Script(type, path));
                     }
 
                     Types = scriptTypes;

@@ -3,12 +3,6 @@ using Ara3D.Models;
 
 namespace Ara3D.Studio.API;
 
-public record RenderSettings(
-    bool VertexColors = false, 
-    bool WireFrame = false,
-    bool Visible = true
-);
-
 public enum AttributeDomain
 {
     Object,
@@ -47,7 +41,7 @@ public record FlowAttribute<T> : FlowAttribute
 /// This is the primary type of object that flows through the modifier stack and interflow graphs
 /// in Ara 3D Studio. Interflow is a 3D geometric graph system inspired by Houdini, Grasshopper, Dynamo, and MCG.
 /// </summary>
-public sealed class FlowObject
+public sealed class FlowObject : ITransformable3D<FlowObject>
 {
     /*
     public static HashSet<Type> SupportedTypes =
@@ -64,21 +58,21 @@ public sealed class FlowObject
         typeof(QuadMesh3D),
         typeof(QuadGrid3D),
 
-        // Instanced 3D mesh groups 
+        // Instanced 3D mesh groups
         typeof(Model3D),
 
-        // BIM Data (instanced meshes with additional BIM data) 
-        typeof(BimModel3D), 
+        // BIM Data (instanced meshes with additional BIM data)
+        typeof(BimModel3D),
 
-        // Implicit or Continuous objects  
+        // Implicit or Continuous objects
         typeof(ParametricSurface),
         typeof(Curve2D),
         typeof(Curve3D),
         typeof(Solid),
         typeof(SignedDistanceField2D),
         typeof(SignedDistanceField3D),
-        
-        // 2D Geometric Primitives 
+
+        // 2D Geometric Primitives
         typeof(Point2D),
         typeof(Line2D),
         typeof(Triangle2D),
@@ -86,7 +80,7 @@ public sealed class FlowObject
         typeof(PolyLine2D),
         typeof(Bounds2D),
 
-        // 3D Geometric Primitives 
+        // 3D Geometric Primitives
         typeof(Point3D),
         typeof(Line3D),
         typeof(Triangle3D),
@@ -103,7 +97,7 @@ public sealed class FlowObject
         typeof(Transform3D),
         typeof(Rotation3D),
 
-        // Primitive Arrays 
+        // Primitive Arrays
         typeof(Point2DArray),
         typeof(Line2DArray),
         typeof(Triangle2DArray),
@@ -133,16 +127,16 @@ public sealed class FlowObject
     public static bool IsSupported<T>() => IsSupported(typeof(T));
     public bool CanConvertTo<T>() => CanConvertTo(typeof(T));
     public T Convert<T>() => (T)Value;
-    public Type Type { get; }
+    public Type? Type { get; }
     public object? Value { get; }
-    public List<object> CustomData { get; }
     public bool IsNull => Value == null;
-    public RenderSettings? RenderSettings  { get; }
+    public RenderSettings? RenderSettings { get; }
+    public Material Material { get; }
 
     // NOTE: selection, UVs, Normals, VertexColors, and more are stored as attributes. 
-    public IReadOnlyList<Attribute> Attributes { get; }
+    public IReadOnlyList<FlowAttribute> Attributes { get; }
 
-    public FlowObject(object? value, RenderSettings? renderSettings, IReadOnlyList<Attribute> attributes)
+    public FlowObject(object? value, RenderSettings? renderSettings, Material material, IReadOnlyList<FlowAttribute> attributes = null)
     {
         var type = value?.GetType();
         if (type != null && !IsSupported(type))
@@ -150,15 +144,27 @@ public sealed class FlowObject
         Value = value;
         Type = type;
         RenderSettings = renderSettings;
-        Attributes = attributes;
+        Attributes = attributes ?? [];
+        Material = material;
     }
 
     public FlowObject WithNewValue(object value)
-        => new(value, RenderSettings, Attributes);
+        => new(value, RenderSettings, Material, Attributes);
 
     public FlowObject WithNewRenderSettings(RenderSettings renderSettings)
-        => new(Value, renderSettings, Attributes);
+        => new(Value, renderSettings, Material, Attributes);
 
-    public FlowObject WithNewAttributes(IReadOnlyList<Attribute> attributes)
-        => new(Value, RenderSettings, attributes);
+    public FlowObject WithNewAttributes(IReadOnlyList<FlowAttribute> attributes)
+        => new(Value, RenderSettings, Material, attributes);
+
+    public FlowObject WithMaterial(Material material)
+        => new(Value, RenderSettings, material, Attributes);
+
+    public bool HasObject
+        => Value != null;
+
+    public FlowObject Transform(Transform3D t)
+    {
+        throw new NotImplementedException();
+    }
 }

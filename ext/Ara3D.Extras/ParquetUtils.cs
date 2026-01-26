@@ -239,6 +239,7 @@ public static class ParquetUtils
             pb.Add(bg.InstanceMaterialIndex, nameof(bg.InstanceMaterialIndex));
             pb.Add(bg.InstanceMeshIndex, nameof(bg.InstanceMeshIndex));
             pb.Add(bg.InstanceTransformIndex, nameof(bg.InstanceTransformIndex));
+            pb.Add(bg.InstanceFlags, nameof(bg.InstanceFlags));
             r.Add(pb);
         }
         {

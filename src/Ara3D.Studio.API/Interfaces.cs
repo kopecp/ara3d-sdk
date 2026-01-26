@@ -23,16 +23,6 @@ public interface IHostApplication
 public interface IAnimated
 { }
 
-public interface IAnimatedModelGenerator : IGenerator, IAnimated
-{
-    Model3D Eval(EvalContext context);
-}
-
-public interface IAnimatedModelModifier : IModelModifier, IAnimated
-{
-    Model3D Eval(Model3D model3D, EvalContext context);
-}
-
 /// <summary>
 /// A scripted component, is one that is loaded from a plug-in DLL or a C# source file 
 /// </summary>
@@ -92,55 +82,14 @@ public interface ILoader : IScriptedComponent
 /// A script that generates objects
 /// </summary>
 public interface IGenerator : IScriptedComponent
-{ }
-
-/// <summary>
-/// A script that generates 3D models  
-/// </summary>
-public interface IModelGenerator : IGenerator
 {
-    IModel3D Eval(EvalContext context);
 }
 
 /// <summary>
-/// A script that generates line meshes
-/// </summary>
-public interface ILineMeshGenerator : IGenerator
-{
-    LineMesh3D Eval(EvalContext context);
-}
-
-/// <summary>
-/// A script that generates line meshes
-/// </summary>
-public interface IQuadMeshGenerator : IGenerator
-{
-    QuadMesh3D Eval(EvalContext context);
-}
-
-
-/// <summary>
-/// A modifier converts objects into other objects. 
+/// A script that converts objects into other objects. 
 /// </summary>
 public interface IModifier : IScriptedComponent
 {
-    
-}
-
-/// <summary>
-/// A modifier that converts from models into models. 
-/// </summary>
-public interface IModelModifier : IModifier
-{
-    IModel3D Eval(IModel3D model3D, EvalContext context);
-}
-
-/// <summary>
-/// 
-/// </summary>
-public interface ILineMeshModifier : IModifier
-{
-    object Eval(LineMesh3D mesh, EvalContext context);
 }
 
 /// <summary>
