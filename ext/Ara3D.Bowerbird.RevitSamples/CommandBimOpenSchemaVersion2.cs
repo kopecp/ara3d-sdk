@@ -26,8 +26,8 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
         logger.Log("Getting settings and options");
         
         // TEMP: 
-        var settings = new BimOpenSchemaExportSettings();
-        //var settings = BimOpenSchemaExportSettings.LoadDefaultOrCreate();
+        //var settings = new BimOpenSchemaExportSettings();
+        var settings = BimOpenSchemaExportSettings.LoadDefaultOrCreate();
 
         //logger.Log(settings.ToJsonString());
 
@@ -124,9 +124,13 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
 
         if (BosRevitBuilder.Settings.IncludeGeometry)
         {
-            var eid = new ElementId(id);
-            var e = db.Document.GetElement(eid);
-            BosRevitBuilder.MeshGatherer.AddElement(db, e);
+            // Only add geometry for objects that are not types.
+            if (db.NonTypeElementIds.Contains(id))
+            {
+                var eid = new ElementId(id);
+                var e = db.Document.GetElement(eid);
+                BosRevitBuilder.MeshGatherer.AddElement(db, e);
+            }
         }
 
         ProcessedCount++;

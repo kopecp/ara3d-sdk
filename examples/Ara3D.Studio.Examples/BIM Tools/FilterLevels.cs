@@ -41,7 +41,6 @@ public class FilterLevels : IModifier
         if (_bim != bim)
         {
             RecomputeLevels(bim);
-            context.Application.RefreshUI(this);
         }
 
         var curLevelName = _levelData[Level].Name;

@@ -6,6 +6,7 @@ namespace Ara3D.Studio.Samples.BIM_Tools;
 public class FilterParameters : IModifier
 {
     public Action ShowWindow => ShowWindowImpl;
+    public int InstanceCount { get; private set; }
 
     public void ShowWindowImpl()
     {
@@ -31,7 +32,6 @@ public class FilterParameters : IModifier
 
     public void UpdateSelection(IReadOnlyList<string> sel)
     {
-        _app?.Invalidate(this);
         _selectedNames.Clear();
         _selectedDescriptors.Clear();
         _selectedEntities.Clear();
@@ -61,6 +61,9 @@ public class FilterParameters : IModifier
         foreach (var p in _data.SingleParameters)
             if (_selectedDescriptors.Contains((int)p.Descriptor))
                 _selectedEntities.Add(p.Entity);
+
+        // NOTE: very important, only do this at the end!
+        _app?.Invalidate(this);
     }
 
     private readonly HashSet<string> _parameterNames = [];
@@ -71,28 +74,33 @@ public class FilterParameters : IModifier
     private readonly HashSet<EntityIndex> _geometricEntities = new();
 
     private BimData? _data;
-    private BimObjectModel? _model;
     private IHostApplication _app;
 
-    public void RecomputeParameterNames(BimData bimData, EvalContext context)
+    public void RecomputeParameterNamesIfNeeded(BimData bimData, EvalContext context)
     {
         _app = context.Application;
 
         if (bimData == _data)
             return;
-
         _data = bimData;
 
         _parameterNames.Clear();
+        _descriptors.Clear();
         _geometricEntities.Clear();
 
         if (_data == null)
             return;
 
-        foreach (var inst in bimData.Geometry.InstanceEntityIndex)
-            _geometricEntities.Add((EntityIndex)inst);
+        // Get the list of entities that are actually referenced by instances with geometry 
+        var g = bimData.Geometry;
+        for (var i = 0; i < g.GetNumInstances(); i++)
+        {
+            var mi = g.InstanceMeshIndex[i];
+            var ei = g.InstanceEntityIndex[i];
+            if (mi >= 0 && ei >= 0)_geometricEntities.Add((EntityIndex)ei);
+        }
 
-        _descriptors.Clear();
+        // Get only the descriptors that are used by actual parameters
         foreach (var p in _data.PointParameters)
             if (_geometricEntities.Contains(p.Entity))
                 _descriptors.Add(p.Descriptor);
@@ -109,6 +117,7 @@ public class FilterParameters : IModifier
             if (_geometricEntities.Contains(p.Entity))
                 _descriptors.Add(p.Descriptor);
 
+        // Create the list of names, from the descriptors which are linked to geometric elements
         foreach (var pd in _descriptors)
         { 
             var name = GetDescriptorName(pd);
@@ -129,7 +138,9 @@ public class FilterParameters : IModifier
     {
         var bimData = context.Input.GetAttachment<BimData>();
         if (bimData == null) return model3D;
-        RecomputeParameterNames(bimData, context);
-        return model3D.Where(IsSelected);
+        RecomputeParameterNamesIfNeeded(bimData, context);
+        var r = model3D.Where(IsSelected);
+        InstanceCount = r.Instances.Count;
+        return r;
     }
 }

@@ -16,7 +16,6 @@ public interface IHostApplication
 {
     ILogger Logger { get; }
     void Invalidate(object obj);
-    void RefreshUI(object obj);
 }
 
 // Implementing this interface assures that your script is called on a regular phases
