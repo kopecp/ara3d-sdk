@@ -50,6 +50,8 @@ public class PropProvider : IPropContainer
         var cur = acc.GetValue(obj);
         if (cur?.Equals(value) ?? false)
             return true;
+        if (acc.Descriptor.IsReadOnly || !acc.HasSetter)
+            return false;
         acc.SetValue(ref obj, value);
         NotifyPropertyChanged(name);
         return true;

@@ -1,5 +1,6 @@
-﻿namespace Ara3D.Studio.Samples;
+﻿namespace Ara3D.Studio.Samples.Demos;
 
+[Category(nameof(Categories.Demos))]
 public class RotatedPlatforms : IGenerator
 {
     [Range(1, 200)] public int Count = 8;
@@ -20,7 +21,7 @@ public class RotatedPlatforms : IGenerator
         foreach (var i in new IntegerRange(0, Count))
         {
             var angle = rotationPerFloor * i;
-            var position = Vector3.UnitZ * ((Spacing * i) + Height);
+            var position = Vector3.UnitZ * (Spacing * i + Height);
             var rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, angle);
             var transform = new Pose3D(position, rotation);
             instances.Add(transform);

@@ -506,6 +506,9 @@
 
         public static Bounds3D GetTotalBoundsTrimOutliers(this IReadOnlyList<Bounds3D> bounds, float trimFraction = 0.1f)
         {
+            if (bounds.Count == 0)
+                return Bounds3D.Empty;
+            
             var center = GetMedianCenter(bounds);
             var distances = bounds.Map(b => b.Center.Vector3.Distance(center).Value);
             

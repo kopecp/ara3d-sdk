@@ -30,39 +30,19 @@ public interface IScriptedComponent
 { }
 
 /// <summary>
-/// An asset is a piece of data that was loaded from disk 
+/// An asset is a piece of data that was loaded from disk, or created manually. 
+/// It has a core data element that can flow through the graph (which can be modified and rendered)
+/// and a list of attachments which can be understood by modifiers in the graph.
+/// An example of attachment is BIM Data. 
 /// </summary>
-public interface IAsset
+public interface IAsset : IDisposable
 {
+    object Value { get; }
+    IReadOnlyList<object> Attachments { get; }
 }
 
 /// <summary>
-/// An asset that contains geometry (a mesh, a scene graph, a set of poly-lines) and that is ready to be rendered 
-/// </summary>
-public interface IRenderableAsset : IAsset, IDisposable
-{
-    RenderModelData RenderData { get; }
-}
-
-/// <summary>
-/// An asset that contains a Model3D, which is a collection of instanced triangle meshes.
-/// Currently: this excludes point clouds, poly lines, and quad meshes.
-/// </summary>
-public interface IModelAsset : IAsset
-{
-    IModel3D Model { get; }
-}
-
-/// <summary>
-/// An asset that contains a LineMesh3D, which is a collection of lines.
-/// </summary>
-public interface ILineMeshAsset : IAsset
-{
-    LineMesh3D Lines { get; }
-}
-
-/// <summary>
-/// This is an object that can appear in a graph and represents a loaded asset. 
+/// This is an object that can appear in a graph and represents a loadable asset. 
 /// </summary>
 public interface IAssetSource : IDisposable
 {
@@ -75,18 +55,20 @@ public interface IAssetSource : IDisposable
 /// </summary>
 public interface ILoader : IScriptedComponent
 {
-    Task<IRenderableAsset> Load(FilePath filePath, ILogger logger);
+    Task<IAsset> Load(FilePath filePath, ILogger logger);
 }
 
 /// <summary>
-/// A script that generates objects
+/// A script that generates objects.
 /// </summary>
 public interface IGenerator : IScriptedComponent
 {
 }
 
 /// <summary>
-/// A script that converts objects into other objects. 
+/// A script that converts objects into other objects.
+/// It will have an Eval function that takes at least one argument,
+/// and optionally an EvalContext 
 /// </summary>
 public interface IModifier : IScriptedComponent
 {

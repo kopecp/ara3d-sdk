@@ -1,9 +1,7 @@
 ﻿using System.Diagnostics;
 using Ara3D.Collections;
-using Ara3D.F8;
 using Ara3D.Geometry;
 using Ara3D.Memory;
-using SNVector3 = System.Numerics.Vector3;
 
 namespace Ara3D.Models;
 
@@ -103,7 +101,7 @@ public class RenderModelData : IDisposable
 
     public void Update(RenderModelData data)
     {
-        PrimitiveSize = data.PrimitiveSize;
+        PrimitiveSize = data.PrimitiveSize; 
         UpdateVertexBuffer(data.VertexBuffer);
         UpdateIndexBuffer(data.IndexBuffer);
         UpdateMeshBuffer(data.MeshBuffer);
@@ -242,8 +240,9 @@ public class RenderModelData : IDisposable
         {
             var meshSlice = MeshBuffer[i];
             Debug.Assert(meshSlice.BaseVertex >= 0);
+            Debug.Assert(meshSlice.BaseVertex <= VertexBuffer.Count);
             Debug.Assert(meshSlice.VertexCount + meshSlice.BaseVertex <= VertexBuffer.Count);
-            //Debug.Assert(meshSlice.FirstIndex >= 0);
+            Debug.Assert(meshSlice.FirstIndex <= IndexBuffer.Count);
             Debug.Assert(meshSlice.FirstIndex + meshSlice.IndexCount <= IndexBuffer.Count);
         }
 #endif
@@ -253,10 +252,24 @@ public class RenderModelData : IDisposable
     {
         var points = GetPoints(slice);
         var indices = GetIndices(slice);
-        var r = Bounds3D.Empty;
-        for (var i=0; i < indices.Count; i++)
-            r = r.Include(points[i]);
-        return r;
+
+        float minX, minY, minZ, maxX, maxY, maxZ;
+
+        minX = minY = minZ = float.MaxValue;
+        maxX = maxY = maxZ = float.MinValue;
+
+        for (var i = 0; i < indices.Count; i++)
+        {
+            var p = points[i];
+            minX = minX.Min(p.X);
+            minY = minY.Min(p.Y);
+            minZ = minZ.Min(p.Z);
+            maxX = maxX.Max(p.X);
+            maxY = maxY.Max(p.Y);
+            maxZ = maxZ.Max(p.Z);
+        }
+
+        return ((minX, minY, minZ), (maxX, maxY, maxZ));
     }
 
     public void RecomputeMeshBounds()

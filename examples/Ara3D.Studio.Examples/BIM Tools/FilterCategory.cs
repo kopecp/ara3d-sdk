@@ -2,6 +2,7 @@
 
 namespace Ara3D.Studio.Samples.BIM_Tools;
 
+[Category(nameof(Categories.Buildings))]
 public class FilterCategory : IModifier
 {
     //[Options(nameof(CategoryNames))] 
@@ -10,22 +11,31 @@ public class FilterCategory : IModifier
     public List<string> CategoryNames { get; private set; } = [];
     
     private List<StringIndex> _categoryIndices;
-    private IModel3D _model3D;
 
-    public void RecomputeCategoryNames()
+    private BimData _data;
+    private BimObjectModel _model;
+
+    public void RecomputeCategoryNames(BimData bimData, EvalContext context)
     {
-        if (_model3D is not BimModel3D bim)
+        if (bimData == _data)
+            return;
+        
+        _data = bimData;
+        
+        if (_data == null)
         {
             CategoryNames = [];
             return;
-        }
+        } 
 
-        CategoryNames = bim
-            .ObjectModel
+        _model = new BimObjectModel(_data, true);
+
+        CategoryNames = _model
             .Entities
             .Where(e => e.HasGeometry)
             .Select(e => e.Category)
             .Distinct()
+            .OrderBy(x => x)
             .ToList();
     }
 
@@ -34,20 +44,13 @@ public class FilterCategory : IModifier
 
     public IModel3D Eval(IModel3D model3D, EvalContext context)
     {
-        if (model3D != _model3D)
-        {
-            _model3D = model3D;
-            RecomputeCategoryNames();
-        }
+        var bimData = context.Input.GetAttachment<BimData>();
+        RecomputeCategoryNames(bimData, context);
 
         if (Category < 0 || Category >= CategoryNames.Count)
             return model3D;
 
-        if (model3D is not BimModel3D bim)
-            return model3D;
-
-        var entities = bim.ObjectModel.Entities;
+        var entities = _model.Entities;
         return model3D.Where(inst => entities[inst.EntityIndex].Category == CategoryName);
-
     }
 }

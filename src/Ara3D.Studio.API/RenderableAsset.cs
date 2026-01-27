@@ -2,8 +2,11 @@
 
 namespace Ara3D.Studio.API;
 
-public class RenderableAsset : IRenderableAsset
+public class RenderableAsset : IAsset
 {
+    public object Value => RenderData;
+    public IReadOnlyList<object> Attachments => [];
+
     public RenderModelData RenderData { get; private set; }
 
     public RenderableAsset()

@@ -1,5 +1,6 @@
-﻿namespace Ara3D.Studio.Samples;
+﻿namespace Ara3D.Studio.Samples.Demos;
 
+[Category(nameof(Categories.Demos))]
 public class FilterObjects : IModifier
 {
     [Range(0, 20)] public int ObjectComplexity = 2;

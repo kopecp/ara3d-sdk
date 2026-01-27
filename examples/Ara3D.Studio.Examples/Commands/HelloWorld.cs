@@ -1,3 +1,5 @@
+using System.Windows.Forms;
+
 namespace Ara3D.Studio.Samples.Commands;
 
 /// <summary>

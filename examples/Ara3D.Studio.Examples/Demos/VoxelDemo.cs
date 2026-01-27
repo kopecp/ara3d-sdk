@@ -1,5 +1,6 @@
-﻿namespace Ara3D.Studio.Samples;
+﻿namespace Ara3D.Studio.Samples.Demos;
 
+[Category(nameof(Categories.Demos))]
 public class VoxelDemo : IGenerator
 {
     [Range(1, 128)] public int GridSize = 16;

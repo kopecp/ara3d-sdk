@@ -1,4 +1,5 @@
-﻿@echo off
+﻿
+@echo off
 setlocal
 
 REM Source directory = folder of the built project
@@ -20,7 +21,8 @@ if not exist "%DEST_DIR%" (
 
 REM Copy files (overwrite silently)
 copy /Y "%SRC_DIR%BimGeometry.cs" "%DEST_DIR%\BimGeometry.cs"
-copy /Y "%SRC_DIR%BimObjectModel.cs" "%DEST_DIR%\BimOpenSchema.cs"
+copy /Y "%SRC_DIR%BimObjectModel.cs" "%DEST_DIR%\BimObjectModel.cs"
+copy /Y "%SRC_DIR%BimOpenSchema.cs" "%DEST_DIR%\BimOpenSchema.cs"
 
 echo Done.
 endlocal

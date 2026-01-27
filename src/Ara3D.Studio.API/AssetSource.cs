@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Ara3D.Logging;
+using Ara3D.Models;
 using Ara3D.Utils;
 
 namespace Ara3D.Studio.API;
@@ -11,7 +12,7 @@ public class AssetSource : IAssetSource
     public string LoadTime { get; private set; }
     public FilePath FilePath { get; }
     public ILoader Loader { get; }
-    public IRenderableAsset? Asset { get; private set; }
+    public IAsset? Asset { get; private set; }
     public string LoaderTypeName { get; }
     public int NumMeshes { get; private set; }
     public int NumInstances { get; private set; }
@@ -37,10 +38,14 @@ public class AssetSource : IAssetSource
         Asset = await Loader.Load(FilePath, logger);
         LoadTime = sw.PrettyPrintTimeElapsed();
         logger.Log($"COMPLETED loading model from {FilePath}");
-        NumMeshes = Asset.RenderData.MeshCount;
-        NumPoints = Asset.RenderData.TotalVertexCount;
-        NumInstances = Asset.RenderData.InstanceCount;
-        NumFaces = Asset.RenderData.TotalFaceCount;
+        if (Asset.Value is RenderModelData rmd)
+        {
+            NumMeshes = rmd.MeshCount;
+            NumPoints = rmd.TotalVertexCount;
+            NumInstances = rmd.InstanceCount;
+            NumFaces = rmd.TotalFaceCount;
+        }
+
         return Asset;
     }
 

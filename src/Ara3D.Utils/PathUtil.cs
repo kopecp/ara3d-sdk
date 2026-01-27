@@ -576,6 +576,9 @@ namespace Ara3D.Utils
         public static string[] ReadAllLines(this FilePath self)
             => File.ReadAllLines(self);
 
+        public static FilePath GetMostRecentFile(this DirectoryPath self, string searchPattern)
+            => self.GetFiles(searchPattern).OrderByDescending(f => f.GetModifiedTime()).FirstOrDefault();
+
         public static FilePath WriteAllText(this FilePath self, string contents)
         {
             File.WriteAllText(self, contents);
