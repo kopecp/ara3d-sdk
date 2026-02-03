@@ -504,11 +504,19 @@
         public static Point3D GetMedianCenter(this IReadOnlyList<Bounds3D> bounds)
             => bounds.Map(b => b.Center.Vector3).Median();
 
+        public static Bounds3D GetTotalBounds(this IReadOnlyList<Bounds3D> bounds)
+        {
+            var total = Bounds3D.Empty;
+            foreach (var b in bounds)
+                total = total.Include(b);
+            return total;
+        }
+
         public static Bounds3D GetTotalBoundsTrimOutliers(this IReadOnlyList<Bounds3D> bounds, float trimFraction = 0.1f)
         {
-            if (bounds.Count == 0)
-                return Bounds3D.Empty;
-            
+            if (bounds.Count < 5)
+                return bounds.GetTotalBounds();
+
             var center = GetMedianCenter(bounds);
             var distances = bounds.Map(b => b.Center.Vector3.Distance(center).Value);
             
@@ -523,5 +531,191 @@
 
             return total;
         }
+
+        public static IReadOnlyList<Point3D> GetCircularPoints(this int n, float radius = 1f)
+        {
+            var poly = new RegularPolygon(Point2D.Default, (n + 1));
+            return poly.Points.To3D().Map(p => p * radius);
+        }
+
+        //==
+        
+        public static QuadMesh3D Subdivide(this QuadMesh3D self, int n)
+        {
+            if (n <= 0) throw new ArgumentOutOfRangeException(nameof(n), "n must be >= 1.");
+            if (n == 1) return self;
+
+            var (srcPoints, srcFaces) = self;
+            var builder = new QuadMesh3DBuilder();
+
+            // Reuse original vertices
+            var vertexMap = new Dictionary<int, int>(srcPoints.Count);
+
+            int GetOrAddVertex(int srcIndex)
+            {
+                if (vertexMap.TryGetValue(srcIndex, out var dst)) return dst;
+                dst = builder.Points.Count;
+                builder.Points.Add(srcPoints[srcIndex]);
+                vertexMap[srcIndex] = dst;
+                return dst;
+            }
+
+            // Reuse subdivided edge vertices across adjacent faces.
+            // Key = (minVertex, maxVertex, kFromMin) where kFromMin is 1..n-1.
+            var edgeMap = new Dictionary<(int lo, int hi, int kFromLo), int>();
+
+            int GetOrAddEdgePoint(int i0, int i1, int k) // k in 0..n
+            {
+                if (k <= 0) return GetOrAddVertex(i0);
+                if (k >= n) return GetOrAddVertex(i1);
+
+                var lo = Math.Min(i0, i1);
+                var hi = Math.Max(i0, i1);
+
+                // Convert "k from i0->i1" into "k from lo->hi"
+                var kFromLo = (i0 == lo) ? k : (n - k);
+
+                var key = (lo, hi, kFromLo);
+                if (edgeMap.TryGetValue(key, out var dstIndex))
+                    return dstIndex;
+
+                var pLo = srcPoints[lo];
+                var pHi = srcPoints[hi];
+                var t = kFromLo / (float)n;
+
+                dstIndex = builder.Points.Count;
+                builder.Points.Add(pLo.Lerp(pHi, t));
+                edgeMap[key] = dstIndex;
+                return dstIndex;
+            }
+
+            for (var faceIndex = 0; faceIndex < srcFaces.Count; faceIndex++)
+            {
+                var f = srcFaces[faceIndex];
+                int ia = f.A, ib = f.B, ic = f.C, id = f.D;
+
+                var q = new Quad3D(srcPoints[ia], srcPoints[ib], srcPoints[ic], srcPoints[id]);
+
+                // Grid of vertex indices for this face (size (n+1)x(n+1))
+                var grid = new int[n + 1, n + 1];
+
+                for (var v = 0; v <= n; v++)
+                {
+                    for (var u = 0; u <= n; u++)
+                    {
+                        int idx;
+
+                        // Corners
+                        if (u == 0 && v == 0) idx = GetOrAddVertex(ia);
+                        else if (u == n && v == 0) idx = GetOrAddVertex(ib);
+                        else if (u == n && v == n) idx = GetOrAddVertex(ic);
+                        else if (u == 0 && v == n) idx = GetOrAddVertex(id);
+
+                        // Edges (reuse across faces)
+                        else if (v == 0) idx = GetOrAddEdgePoint(ia, ib, u);         // A->B
+                        else if (u == n) idx = GetOrAddEdgePoint(ib, ic, v);         // B->C
+                        else if (v == n) idx = GetOrAddEdgePoint(id, ic, u);         // D->C (left->right along top edge)
+                        else if (u == 0) idx = GetOrAddEdgePoint(ia, id, v);         // A->D
+
+                        // Interior (unique to this face)
+                        else
+                        {
+                            var uu = u / (float)n;
+                            var vv = v / (float)n;
+                            var uv = new Vector2(uu, vv);
+                            idx = builder.Points.Count;
+                            builder.Points.Add(q.Bilinear(uv));
+                        }
+
+                        grid[u, v] = idx;
+                    }
+                }
+
+                // Emit n*n quads
+                for (var v = 0; v < n; v++)
+                {
+                    for (var u = 0; u < n; u++)
+                    {
+                        var a = grid[u, v];
+                        var b = grid[u + 1, v];
+                        var c = grid[u + 1, v + 1];
+                        var d = grid[u, v + 1];
+                        builder.Faces.Add(new Integer4(a, b, c, d));
+                    }
+                }
+            }
+
+            return builder.ToQuadMesh3D();
+        }
+
+        /// <summary>
+        /// Creates a quad cap from the top numPoints. 
+        /// </summary>
+        public static QuadMesh3D Cap(this QuadMesh3D mesh, IReadOnlyList<int> indices, int segments)
+        {
+            if (indices == null) throw new ArgumentNullException(nameof(indices));
+            if (indices.Count < 3) throw new ArgumentException("Need at least 3 indices to form a polygon.", nameof(indices));
+            if (segments < 1) throw new ArgumentOutOfRangeException(nameof(segments), "segments must be >= 1.");
+
+            var (srcPoints, srcFaces) = mesh;
+
+            // Start with a copy of the input mesh (so we "add a cap" onto it)
+            var builder = new QuadMesh3DBuilder();
+            builder.Points.AddRange(srcPoints);
+            builder.Faces.AddRange(srcFaces);
+
+            // Compute polygon center as average of boundary vertices
+            float cx = 0, cy = 0, cz = 0;
+            for (var i = 0; i < indices.Count; i++)
+            {
+                var p = srcPoints[indices[i]];
+                cx += p.X; cy += p.Y; cz += p.Z;
+            }
+            var inv = 1.0f / indices.Count;
+            var center = new Point3D(cx * inv, cy * inv, cz * inv);
+
+            var m = indices.Count;
+
+            // Ring 0 uses existing boundary indices
+            var prevRing = new int[m];
+            for (var i = 0; i < m; i++)
+                prevRing[i] = indices[i];
+
+            // Create inner rings 1..segments.
+            // Ring "segments" collapses to the center point (all vertices equal), producing a closed cap.
+            for (var r = 1; r <= segments; r++)
+            {
+                var t = r / (float)segments;
+
+                var currRing = new int[m];
+
+                for (var i = 0; i < m; i++)
+                {
+                    var bp = srcPoints[indices[i]];
+                    var p = bp.Lerp(center, t);
+
+                    currRing[i] = builder.Points.Count;
+                    builder.Points.Add(p);
+                }
+
+                // Connect prev ring to current ring with a quad strip
+                for (var i = 0; i < m; i++)
+                {
+                    var iNext = (i + 1) % m;
+
+                    var a = prevRing[i];
+                    var b = prevRing[iNext];
+                    var c = currRing[iNext];
+                    var d = currRing[i];
+
+                    builder.Faces.Add(new Integer4(a, b, c, d));
+                }
+
+                prevRing = currRing;
+            }
+
+            return builder.ToQuadMesh3D();
+        }
+
     }
 }

@@ -260,7 +260,7 @@ public class RenderModelData : IDisposable
 
         for (var i = 0; i < indices.Count; i++)
         {
-            var p = points[i];
+            var p = points[indices[i]];
             minX = minX.Min(p.X);
             minY = minY.Min(p.Y);
             minZ = minZ.Min(p.Z);

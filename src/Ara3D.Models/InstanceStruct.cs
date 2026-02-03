@@ -289,5 +289,5 @@ public unsafe struct InstanceStruct
         => $"Mesh={MeshIndex},Entity={EntityIndex},Material={Material}";
 
     public bool IsVisible
-        => (Flags & HiddenFlag) == 0;
+        => (Flags & HiddenFlag) == 0 && MeshIndex >= 0;
 }

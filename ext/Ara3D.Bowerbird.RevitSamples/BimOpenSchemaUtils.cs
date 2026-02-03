@@ -30,6 +30,8 @@ namespace Ara3D.Bowerbird.RevitSamples
             return true;
         }
 
+        public static Material DefaultMaterial = new Material(new(0.8f, 0.8f, 0.8f, 1), 0.05f, 0.3f);
+
         public static void BuildGeometry(this BosMeshGatherer meshGatherer, BimGeometryBuilder builder)
         {
             var meshOffset = builder.Meshes.Count;
@@ -42,7 +44,7 @@ namespace Ara3D.Bowerbird.RevitSamples
                     continue;
 
                 var isHidden = IsVis(g) ? (byte)0 : (byte)1;
-                var defaultMatIndex = builder.AddMaterial(g.DefaultMaterial ?? Material.Default);
+                var defaultMatIndex = builder.AddMaterial(g.DefaultMaterial ?? DefaultMaterial);
                 foreach (var part in g.Parts)
                 {
                     var matIndex = part.Material == null    

@@ -9,22 +9,15 @@ public class Cylinder : IGenerator
     [Range(0f, 10f)] public float Radius = 1;
 
     public QuadGrid3D Eval()
-        => new RegularPolygon(Point2D.Zero, Sides).Extrude(Height / Segments, Segments);
+        => Sides.GetCircularPoints(Radius).Extrude(Height / Segments, Segments);
 }
 
 [Category(nameof(Categories.Meshes))]
 public class Cube : IGenerator
 {
-    [Range(1, 100)] public int Segments = 10;
-
-    [Range(0f, 100f)] public float X = 10;
-    [Range(0f, 100f)] public float Y = 10;
-    [Range(0f, 100f)] public float Z = 10;
-
-    // TODO: this does not join the top or bottom 
-
+    [Range(1, 100)] public int Segments = 2;
     public QuadMesh3D Eval(EvalContext context)
-        => Quad2D.Unit.ToLineMesh().Scale((X * Segments, Y * Segments, 0)).Subdivide(Segments).Extrude(Vector3.UnitZ * Z, Segments);
+        => PlatonicSolids.Cube.Subdivide(2);
 }
 
 [Category(nameof(Categories.Meshes))]
@@ -35,14 +28,11 @@ public class Prism : IGenerator
     [Range(3, 32)] public int Sides = 3;
     [Range(0f, 10f)] public float Radius = 1;
 
-    // TODO: maybe taper it.
-    // NOTE: 
-
     public QuadGrid3D Eval()
     {
-        var poly = new RegularPolygon(Point2D.Zero, Sides);
-        var points = poly.Points.Map(p => p * Radius);
-        return points.Extrude(Height / Segments, Segments);
+        var r = Sides.GetCircularPoints(Radius).Extrude(Height / Segments, Segments);
+        // TODO: cap. 
+        return r;
     }
 }
 

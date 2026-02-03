@@ -70,10 +70,8 @@ public sealed class BimOpenSchemaExportSettings
     public bool IncludeLinks { get; set; } = true;
     public bool IncludeGeometry { get; set; } = true;
     public bool IncludeParameters { get; set; } = true;
-
-    public bool IncludeAnalyticalElements { get; set; } = false;
     public bool IncludeAnnotationElements { get; set; } = false;
-
+    
     public DetailLevelEnum DetailLevel { get; set; } = DetailLevelEnum.Fine;
 
     // -----------------------------
@@ -86,28 +84,39 @@ public sealed class BimOpenSchemaExportSettings
     public List<string> SkippedClassNames { get; set; } =
         new()
         {
-                "*Line*",
-                "*Point*",
-                "Hub",
-                "*Analytical*",
-                "*Schedule*",
-                "*Detail*",
-                "*Arc*",
-                "*Dimension*",
-                "*Template*",
-                "*Scheme*",
-                "*Sequence*",
-                "*Region*",
-                "*Reference*",
-                "*Style*",
-                "*Origin*"
+            "*Line*",
+            "*Point*",
+            "Hub",
+            "*Analytical*",
+            "*Schedule*",
+            "*Detail*",
+            "*Arc*",
+            "*Dimension*",
+            "*Template*",
+            "*Scheme*",
+            "*Sequence*",
+            "*Region*",
+            "*Reference*",
+            "*Style*",
+            "*Origin*"
         };
 
     /// <summary>
     /// Explicit overrides that force inclusion even if skipped.
     /// </summary>
     public List<string> IncludedClassNamesOverride { get; set; } =
-        new();
+        new()
+        {
+            "Phase",
+            "Level",
+            "Grid",
+            "ProjectInfo",
+            "ProjectLocation",
+            "BasePoint",
+            "SurveyPoint",
+            "DesignOption",
+            "Workset",
+        };
 
     // -----------------------------
     // Category filters
@@ -116,22 +125,22 @@ public sealed class BimOpenSchemaExportSettings
     public List<string> SkippedCategories { get; set; } =
         new()
         {
-                "*Line*",
-                "*AnalyticalSurfaces*",
-                "OST_WeakDims",
-                "*Legend*",
-                "*Dimensions*",
-                "OST_PropertySet",
-                "*Path*",
-                "*Annotation*",
-                "*Load*",
-                "*Schedule*",
-                "*Graphics*",
-                "*Demand*",
-                "*Marks*",
-                "*Symbol*",
-                "*Label*",
-                "OST_SunStudy"
+            "*Line*",
+            "*AnalyticalSurfaces*",
+            "OST_WeakDims",
+            "*Legend*",
+            "*Dimensions*",
+            "OST_PropertySet",
+            "*Path*",
+            "*Annotation*",
+            "*Load*",
+            "*Schedule*",
+            "*Graphics*",
+            "*Demand*",
+            "*Marks*",
+            "*Symbol*",
+            "*Label*",
+            "OST_SunStudy"
         };
 
     public List<string> IncludedCategoriesOverride { get; set; } =

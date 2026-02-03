@@ -6,52 +6,47 @@ namespace Ara3D.Studio.Samples.BIM_Tools;
 [Category(nameof(Categories.Buildings))]
 public class FilterLevels : IModifier
 {
-    [Options(nameof(LevelNames))] 
-    public int Level;
-
+    //[Options(nameof(LevelNames))] 
+    //public int Level;
+    
     public List<string> LevelNames { get; private set; }
 
     [ComputedRange(nameof(_numLevels))]
-    public int LevelSlider
-    {
-        get => Level; 
-        private set => Level = value;
-    }
+    public int Level { get; set; }
 
     private int _numLevels => LevelNames.Count;
-    private BimModel3D _bim;
     private List<(string Name, float Elevation)> _levelData;
 
-    public void RecomputeLevels(BimModel3D bim)
+    private BimData? _data;
+    private BimObjectModel _bom; 
+    private IHostApplication _app;
+
+    public void RecomputeLevels(BimData data, EvalContext context)
     {
-        _bim = bim;
-        _levelData = bim.ObjectModel.GetDistinctLevels().ToList();
+        if (_data == data) return;
+        _data = data;
+        _bom = new BimObjectModel(data, true);
+        _app = context.Application;
+        _levelData = _bom.GetDistinctLevels().ToList();
         LevelNames = _levelData.Select(x => $"{x.Name} {x.Elevation:F2}").ToList();
+        _app.RebuildUI(this);
+    }
+
+    public string CurLevelName => _levelData == null ? "" : _levelData[Level].Name;
+    public float CurLevelElevation => _levelData == null ? 0f : _levelData[Level].Elevation;
+
+    public bool FilterLevel(InstanceStruct inst)
+    {
+        var em = _bom.Entities.ElementAtOrDefault(inst.EntityIndex);
+        if (em == null) return false;
+        return em.LevelName == CurLevelName && (Math.Abs(em.Elevation - CurLevelElevation) < 0.0001);
     }
 
     public IModel3D Eval(IModel3D model3D, EvalContext context)
     {
-        if (model3D is not BimModel3D bim)
-        {
-            _bim = null;
-            LevelNames = null;
-            return model3D;
-        }
-
-        if (_bim != bim)
-        {
-            RecomputeLevels(bim);
-        }
-
-        var curLevelName = _levelData[Level].Name;
-        var curLevelElevation = _levelData[Level].Elevation;
-
-        bool FilterLevel(InstanceStruct inst)
-        {
-            var em = bim.GetEntityModel(inst);
-            return em.LevelName == curLevelName && (Math.Abs(em.Elevation - curLevelElevation) < 0.0001);
-        }
-
+        var bimData = context.Input.GetAttachment<BimData>();
+        if (bimData == null) return model3D;
+        RecomputeLevels(bimData, context);
         return model3D.Where(FilterLevel);
     }
 }

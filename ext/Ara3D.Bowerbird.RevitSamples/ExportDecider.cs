@@ -6,11 +6,17 @@ using System.Text.RegularExpressions;
 
 namespace Ara3D.Bowerbird.RevitSamples;
 
+/// <summary>
+/// For each non-type element decides whether it is should be included.
+/// Used in conjunction with FilteredElementCollector(doc).WhereElementIsNotElementType()
+/// We explicitly include only element types that are referenced by elements.
+/// This avoids a lot of noise. 
+/// </summary>
 public sealed class ExportDecider
 {
     public BimOpenSchemaExportSettings Cfg { get; }
 
-    private readonly ConcurrentDictionary<(BuiltInCategory bic, CategoryType ct, Type t), bool> _lookup = new();
+    public readonly ConcurrentDictionary<(BuiltInCategory bic, CategoryType ct, Type t), bool> Lookup = new();
     public readonly ConcurrentDictionary<Type, bool> LookupDotNetType = new();
     public readonly ConcurrentDictionary<BuiltInCategory, bool> LookupBuiltInCategory = new();
 
@@ -20,14 +26,13 @@ public sealed class ExportDecider
     public bool ShouldExport(Element e)
     {
         if (e == null) return false;
-        if (e is ElementType) return false; // usually desirable
 
-        var cat = e.Category;
+        var cat = e?.Category;
         var ct = cat?.CategoryType ?? CategoryType.Invalid;
         var bic = cat?.BuiltInCategory ?? BuiltInCategory.INVALID;
         var t = e.GetType();
 
-        return _lookup.GetOrAdd((bic, ct, t), static (key, self) =>
+        return Lookup.GetOrAdd((bic, ct, t), static (key, self) =>
             self.ComputeShouldExport(key.bic, key.ct, key.t),
             this);
     }
@@ -55,11 +60,8 @@ public sealed class ExportDecider
     private bool ShouldExportCategoryType(CategoryType ct) =>
         ct switch
         {
-            CategoryType.AnalyticalModel => Cfg.IncludeAnalyticalElements,
             CategoryType.Annotation => Cfg.IncludeAnnotationElements,
-            CategoryType.Internal => false, // default
-            CategoryType.Model => true,
-            _ => true,  // Invalid / unknown: be permissive
+            _ => true,  // permissive by default
         };
 
     // -------------------------

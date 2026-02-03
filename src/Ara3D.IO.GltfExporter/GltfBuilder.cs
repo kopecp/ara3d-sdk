@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Ara3D.Geometry;
 using Ara3D.Models;
 using Ara3D.Utils;
@@ -37,11 +36,13 @@ public class GltfBuilder
     public GltfMaterial ToGltfMaterial(Material mat)
         => new()
         {
+            doubleSided = true,
+            alphaMode = mat.Alpha <= 0.999f ? "BLEND" : "OPAQUE",
             pbrMetallicRoughness = new GltfPbr()
             {
                 baseColorFactor = [mat.Color.R, mat.Color.G, mat.Color.B, mat.Color.A],
-                metallicFactor = mat.Metallic,
-                roughnessFactor = mat.Roughness
+                metallicFactor = 0, // mat.Metallic,
+                roughnessFactor = 1, // mat.Roughness
             }
         };
 
@@ -111,42 +112,76 @@ public class GltfBuilder
         Debug.Assert(Data.nodes.Count == 0);
 
         var mats = model.Instances.Select(i => i.Material).ToIndexedSet();
+        mats.Add(Material.Default);
+        
         Data.materials.AddRange(mats.OrderedMembers().Select(ToGltfMaterial));
 
-        var slices = model.Meshes.Select(CreateMeshSlice).ToList();
-
-        foreach (var slice in slices)
+        var meshUsed = new bool[model.Meshes.Count];
+        
+        // First compute the materials for each mesh. 
+        // TODO: we do something slightly not correct here ... we assume that all instances in a group share the material
+        // This is a restriction of GLTF that is not present in BIM Open Schema or the Ara 3D SDK.
+        // A better way to do this would be to split the instances by material, but for now it is too much work. 
+        var meshToMaterial = new Dictionary<int, int>();
+        var misMatch = 0;
+        foreach (var instance in model.Instances)
         {
+            if (!instance.IsVisible)
+                continue;
+            
+            var matIndex = mats.IndexOf(instance.Material);
+            var meshIndex = instance.MeshIndex;
+            if (!meshToMaterial.TryGetValue(meshIndex, out var value))
+            {
+                meshToMaterial.Add(meshIndex, matIndex);
+            }
+            else
+            {
+                if (value != matIndex)
+                    misMatch++;
+            }
+            meshUsed[meshIndex] = true;
+        }
+
+        // Maps old mesh indices to new ones.
+        // This is because we don't want to recreate meshes 
+        var newMeshIndices = new Dictionary<int, int>();
+        
+        if (misMatch > 0)
+            Debug.WriteLine($"Number of instances with incorrect materials = {misMatch}");
+
+        // Enumerate the meshes 
+        var slices = model.Meshes.Select(CreateMeshSlice).ToList();
+        for (var i=0; i < slices.Count; i++)
+        {
+            if (!meshUsed[i])
+                continue;
+
+            // Update the mesh index lookup
+            newMeshIndices.Add(i, newMeshIndices.Count);
+
+            var slice = slices[i];
             var vertexAccessor = GetVertexAccessor(slice);
             var indexAccessor = GetIndexAccessor(slice);
 
+            var vertexAccessorIndex = Data.accessors.Count;
             Data.accessors.Add(vertexAccessor);
+            var indexAccessorIndex = Data.accessors.Count;
             Data.accessors.Add(indexAccessor);
+
+            var matIndex = meshToMaterial.GetValueOrDefault(i, 0);
+
+            var prim = new GltfMeshPrimitive(vertexAccessorIndex, indexAccessorIndex, matIndex);
+            var mesh = new GltfMesh { primitives = [prim] };
+            Data.meshes.Add(mesh);
         }
 
         foreach (var instance in model.Instances)
         {
-            var matIndex = mats.IndexOf(instance.Material);
             var transform = instance.Matrix4x4;
-
-            var vertexAccessorIndex = instance.MeshIndex * 2 + VERTEX_VIEW_INDEX;
-            var indexAccessorIndex = instance.MeshIndex * 2 + FACE_VIEW_INDEX;
-
-            var vertexAccessor = Data.accessors[vertexAccessorIndex];
-            var indexAccessor = Data.accessors[indexAccessorIndex];
-
-            Debug.Assert(vertexAccessor.componentType == GltfComponentType.FLOAT);
-            Debug.Assert(indexAccessor.componentType == GltfComponentType.UNSIGNED_INT);
-
-            Debug.Assert(vertexAccessor.count == slices[instance.MeshIndex].VertexCount);
-            Debug.Assert(indexAccessor.count == slices[instance.MeshIndex].FaceCount * 3);
-
-            var prim = new GltfMeshPrimitive(vertexAccessorIndex, indexAccessorIndex, matIndex);
-            var mesh = new GltfMesh { primitives = [prim] };
-
-            var node = new GltfNode(transform, Data.meshes.Count);
-
-            Data.meshes.Add(mesh);
+            if (!instance.IsVisible) continue;
+            var meshIndex = newMeshIndices[instance.MeshIndex];
+            var node = new GltfNode(transform, meshIndex);
             Data.nodes.Add(node);
         }
     }

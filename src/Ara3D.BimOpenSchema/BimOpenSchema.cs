@@ -45,7 +45,7 @@ public interface IBimData
 // Usually stored as a .JSON file in the BOS package. 
 public class Manifest
 {
-    public const string CurrentVersion = "0.1";
+    public const string CurrentVersion = "0.2";
     public string BimOpenSchemaVersion { get; set; } = CurrentVersion;
     public string GeneratorApplication { get; set; }
     public string GeneratorVersion { get; set; }
@@ -55,14 +55,14 @@ public class Manifest
 //==
 // Enumerations used for indexing tables. Provides type-safety and convenience in code
 //
-// The choice of long provides future proofing. 
 
-public enum EntityIndex : long { }
-public enum PointIndex : long { }
-public enum DocumentIndex : long { }
-public enum DescriptorIndex : long { }
-public enum StringIndex : long { }
-public enum RelationIndex : long { }
+
+public enum EntityIndex : int { }
+public enum PointIndex : int { }
+public enum DocumentIndex : int { }
+public enum DescriptorIndex : int { }
+public enum StringIndex : int { }
+public enum RelationIndex : int { }
 
 //==
 // Main data type 
@@ -119,12 +119,12 @@ public record struct Point
 /// </summary>
 public enum ParameterType
 {
-    Int, 
-    Bool = Int,
-    Number,
-    Entity,
-    String,
-    Point,
+    Int = 0, 
+    Bool = Int, 
+    Number = 1,
+    Entity = 2,
+    String = 3,
+    Point = 4,
 }
 
 /// <summary>

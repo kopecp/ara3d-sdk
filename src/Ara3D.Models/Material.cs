@@ -14,9 +14,9 @@ public record struct PackedMaterial(byte R, byte G, byte B, byte A, byte Metalli
 
 public record struct Material(Color Color, float Metallic, float Roughness)
 {
-    public static Color DefaultColor = new(0.6f, 0.2f, 0.8f, 1f);
-    public static float DefaultMetallic = 0.1f;
-    public static float DefaultRoughness = 0.5f;
+    public static Color DefaultColor = new(0.85f, 0.85f, 0.95f, 1f);
+    public static float DefaultMetallic = 0f;
+    public static float DefaultRoughness = 0.7f;
     public static Material Default = new(DefaultColor, DefaultMetallic, DefaultRoughness);
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

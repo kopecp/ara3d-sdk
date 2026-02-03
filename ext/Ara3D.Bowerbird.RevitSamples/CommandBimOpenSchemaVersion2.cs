@@ -26,8 +26,8 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
         logger.Log("Getting settings and options");
         
         // TEMP: 
-        //var settings = new BimOpenSchemaExportSettings();
-        var settings = BimOpenSchemaExportSettings.LoadDefaultOrCreate();
+        var settings = new BimOpenSchemaExportSettings();
+        //var settings = BimOpenSchemaExportSettings.LoadDefaultOrCreate();
 
         //logger.Log(settings.ToJsonString());
 
@@ -43,7 +43,7 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
         BosRevitBuilder = new BosRevitBuilder(options, settings, doc, decider.ShouldExport);
 
         logger.Log($"Found {BosRevitBuilder.DocumentContexts.Count} documents");
-
+        
         // DEBUG: 
         //foreach (var kv in decider.LookupBuiltInCategory)
         //    if (!kv.Value)
@@ -63,6 +63,7 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
 
         logger.Log($"Total {total} elements");
 
+        // TEMP: Debugging 
         if (ProcessInBackground(logger))
         {
             logger.Log($"Building Geometry");
@@ -71,6 +72,13 @@ public class CommandBimOpenSchemaVersion2 : NamedCommand
             BosRevitBuilder.ExportBimOpenSchema(settings, logger);
             logger.Log($"Completed export");
         }
+
+        /* NOTE: this can be used to show what was skipped. 
+        foreach (var kv in decider.Lookup)
+        {
+            logger.Log($"{kv.Key} = {kv.Value}");
+        }
+        */
 
         TextDisplayForm.DisplayText(sb.ToString());
     }

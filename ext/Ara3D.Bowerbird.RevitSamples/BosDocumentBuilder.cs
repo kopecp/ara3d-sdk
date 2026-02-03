@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using Ara3D.Domo;
 using static Ara3D.BimOpenSchema.CommonRevitParameters;
 using Document = Autodesk.Revit.DB.Document;
 using Domain = Autodesk.Revit.DB.Domain;
@@ -103,7 +104,7 @@ public partial class BosDocumentBuilder
     public Dictionary<int, EntityIndex> ProcessedConnectors = new();
     public Dictionary<long, EntityIndex> ProcessedCategories = new();
     public Dictionary<string, DescriptorIndex> DescriptorLookup { get; }
-    
+    public Dictionary<long, Models.Material> MaterialLookup { get; } = new();
     public HashSet<long> NonTypeElementIds = new();
     public HashSet<long> TypeElementIds = new();
     public Dictionary<long, EntityIndex> ElementToEntityIndex = new();

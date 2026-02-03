@@ -125,4 +125,5 @@ public static class SurfaceConstructors
 
     public static QuadGrid3D ToQuadGrid3D(IReadOnlyList<Point3D> points, Vector3 v)
         => points.Extrude(v);
+
 }

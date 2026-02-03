@@ -59,13 +59,29 @@ public class BosMeshGatherer
             Geometries.Add(g);
     }
 
+    public Models.Material? GetMaterial(Element e, GeometryElement ge)
+    {
+        var matId = ge.MaterialElement.Id;
+        if (BosDocumentBuilder.MaterialLookup.TryGetValue(matId.Value, out var r))
+            return r;
+
+        var material = ge.MaterialElement.ToAra3DMaterial() 
+                       ?? e.Category?.Material?.ToAra3DMaterial();
+
+        if (material == null) return null;
+        BosDocumentBuilder.MaterialLookup.Add(matId.Value, material.Value);
+        return material;
+    }
+
     public Geometry ComputeGeometry(Element e, Transform transform)
     {
         try
         {
             var geometryElement = e.get_Geometry(Options);
             if (geometryElement == null) return null;
-            var material = e.ResolveFallbackMaterial();
+
+            var material = GetMaterial(e, geometryElement);
+
             var parts = new List<GeometryPart>();
             TraverseElementGeometry(geometryElement, transform, parts);
             if (parts.Count == 0) return null;

@@ -13,7 +13,7 @@ public static class MaterialExtensions
         // 1. Look up the Material
         var mat = doc.GetElement(new ElementId(materialId)) as Material;
         if (mat is null) return null;
-
+            
         // 2. Graphics transparency (0..100), convert to opacity (0..1)
         //    0   => fully opaque
         //    100 => fully transparent
@@ -163,7 +163,7 @@ public static class MaterialExtensions
             : new Models.Material(
                 pbr.BaseColor ?? pbr.ShadingColor, 
                 (float)(pbr.Metallic ?? 0),
-                (float)(pbr.Roughness ?? 0));
+                (float)(pbr.Roughness ?? 1));
 
     public static Models.Material? ToAra3DMaterial(this Document doc, ElementId? materialId)
     {
@@ -173,9 +173,24 @@ public static class MaterialExtensions
             return null;
         if (materialId == ElementId.InvalidElementId)
             return null;
-        var pbrMatInfo = doc.GetPbrInfo(materialId.Value);
-        return ToAra3DMaterial(pbrMatInfo);
+        return (doc.GetElement(materialId) as Material).ToAra3DMaterial();
     }
+
+    public static Models.Material? ToAra3DMaterial(this Material mat)
+    {
+        if (mat == null)
+            return null;
+        var alpha = 1f - mat.Transparency / 100f;
+        var metallic = 0f;
+        var roughness = 1f;
+        var color = new Color(
+            mat.Color.Red / 255f,
+            mat.Color.Green / 255f,
+            mat.Color.Blue / 255f,
+            alpha);
+        return new(color, metallic, roughness);
+    }
+
 
     public static Models.Material? GetAra3DMaterial(this Document self, Face f)
         => f == null ? null : ToAra3DMaterial(self, f?.MaterialElementId);

@@ -1,5 +1,4 @@
-﻿using Ara3D.Studio.Samples;
-using Material = Ara3D.Models.Material;
+﻿using Material = Ara3D.Models.Material;
 
 namespace Ara3D.Studio.Samples.Demos;
 
