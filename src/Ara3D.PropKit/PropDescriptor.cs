@@ -1,50 +1,134 @@
 ﻿using Ara3D.Utils;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 
 namespace Ara3D.PropKit;
 
-/// <summary>
-/// Describe characteristic of a run-time modifiable property.
-/// Contains a type, description, name, and more.
-/// Replaces the System.Component.PropertyDescriptor.
-/// </summary>
-public abstract class PropDescriptor
+public record PropDescriptor
 {
-    public string Name { get; }
-    public string DisplayName { get; }
-    public IReadOnlyDictionary<string, string> Tags { get; }
-    public Type Type { get; }
-    public string Description { get; }
-    public string Units { get; }
-    public bool IsReadOnly { get; }
+    public Type Type { get; init; }
+    public string Name { get; init; }
+    public bool IsReadOnly { get; init; }
+    public string DisplayName { get; init; }
+    public string Description { get; init; }
 
-    protected PropDescriptor(Type type, string name = null, string displayName = null, string description = null, string units = null,
-        bool isReadOnly = false, Dictionary<string, string> tags = null)
+    public PropDescriptor(Type type, string name, bool isReadOnly,
+        string displayName = null, string description = null)
     {
-        Name = name ?? type.Name;
-        DisplayName = displayName ?? name.SplitCamelCase();
-        Type = type;
-        Description = description ?? "";
-        Units = units ?? "";
+        Type = type ?? throw new ArgumentNullException(nameof(type));
+        Name = string.IsNullOrWhiteSpace(name) ? throw new ArgumentException("Name required") : name;
         IsReadOnly = isReadOnly;
-        Tags = tags ?? [];
+        DisplayName = displayName ?? name.SplitCamelCase();
+        Description = description ?? "";
     }
 
-    public abstract object Update(object value, PropUpdateType propUpdate);
-    public abstract bool IsValid(object value);
-    public abstract object Validate(object value);
-    public abstract bool IsValidString(string value);
-    public abstract bool AreEqual(object value1, object value2);
-    public abstract object FromString(string value);
-    public abstract string ToString(object value);
+    public bool CanSupportNull 
+        => !Type.IsValueType;
 
-    public object Default => Update(default, PropUpdateType.Default);
-    public object Min => Update(default, PropUpdateType.Min);
-    public object Max => Update(default, PropUpdateType.Max);
-    
-    public override string ToString()
-        => $"{Name}[\"{DisplayName}\"]";
+    public bool HasValidType(object o)
+    {
+        if (o == null) return CanSupportNull;
+        return o.GetType() == Type;
+    }
+}
 
-    public PropValue DefaultPropValue => new(Default, this);
-    public PropValue MinPropValue => new(Min, this);
-    public PropValue MaxPropValue => new(Max, this);
+public static class PropValidatorFactory
+{
+    public static PropConstraints CreateConstraints(MemberInfo mi, object val)
+    {
+        var rangeAttr = mi.GetCustomAttribute<RangeAttribute>();
+        if (rangeAttr == null) return default;
+        return new(val, rangeAttr?.Minimum, rangeAttr?.Maximum);
+    }
+
+    public static PropConstraints CreateConstraints(object host, FieldInfo fi)
+    {
+        return CreateConstraints(fi, fi.GetValue(host));
+    }
+
+    public static PropConstraints CreateConstraints(object host, PropertyInfo pi)
+    {
+        return CreateConstraints(pi, pi.GetValue(host));
+    }
+
+    public static IPropValidator CreateValidator(object host, PropertyInfo pi)
+    {
+        var constraints = CreateConstraints(host, pi);
+        if (constraints.HasMinMax)
+            return new PropConstraintsValidator(constraints);
+        return null;
+    }
+
+    public static IPropValidator CreateValidator(object host, FieldInfo fi)
+    {
+        var constraints = CreateConstraints(host, fi);
+        if (constraints.HasMinMax)
+            return new PropConstraintsValidator(constraints);
+        return null;
+    }
+}
+
+public static class PropAccessorFactory
+{
+    public static IPropAccessor CreatePropAccessor(
+        this PropDescriptor descriptor,
+        IPropValidator validator,
+        Type targetType, Type valueType,
+        Delegate getterRef, Delegate? setterRef)
+    {
+        var open = typeof(PropAccessor<,>);
+        var closed = open.MakeGenericType(targetType, valueType);
+        return (IPropAccessor)Activator.CreateInstance(closed, descriptor, validator, getterRef, setterRef)!;
+    }
+
+    public static IPropAccessor CreatePropAccessor(Type type, object hostObj, Type targetType, MemberInfo mi, Delegate getter, Delegate setter)
+    {
+        var name = mi.Name;
+        var displayName = mi.Name.SplitCamelCase();
+        var description = "";
+        var units = "";
+
+        var displayNameAttr = mi.GetCustomAttribute<DisplayNameAttribute>();
+        if (displayNameAttr != null)
+            displayName = displayNameAttr.DisplayName;
+
+        var rangeAttr = mi.GetCustomAttribute<RangeAttribute>();
+        var optionsAttr = mi.GetCustomAttribute<OptionsAttribute>();
+
+        return CreatePropAccessor(type, hostObj, targetType, rangeAttr, optionsAttr, name, displayName,
+            description, units, getter, setter);
+    }
+
+    public static IEnumerable<IPropAccessor> GetPropAccessors(this Type type, object hostObj = null)
+    {
+        var props = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
+        foreach (var prop in props)
+        {
+            if (!prop.CanRead)
+                continue;
+            if (prop.GetIndexParameters().Length != 0)
+                continue;
+
+            var setMeth = prop.GetSetMethod(false);
+            var isReadOnly = !prop.CanWrite || setMeth == null || setMeth.IsPrivate;
+
+            var getter = prop.GetFastGetter();
+            var setter = !isReadOnly ? prop.GetFastSetter() : null;
+
+            yield return CreatePropAccessor(prop.PropertyType, hostObj, type, prop, getter, setter);
+        }
+
+        var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
+        foreach (var field in fields)
+        {
+            var isReadOnly = field.IsInitOnly;
+
+            var getter = field.GetFastGetter();
+            var setter = !isReadOnly ? field.GetFastSetter() : null;
+
+            yield return CreatePropAccessor(field.FieldType, hostObj, type, field, getter, setter);
+
+        }
+    }
 }
