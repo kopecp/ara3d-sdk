@@ -5,17 +5,15 @@ namespace Ara3D.PropKit;
 /// <summary>
 /// A class that combines a property descriptor with functions for retrieving or values.
 /// </summary>
-public class PropAccessor<TTarget, TValue>
+public class PropAccessor<TTarget, TValue> : IPropAccessor
 {
-    public PropAccessor(PropDescriptor descriptor, IPropValidator validator, Delegate getter, Delegate? setter = null)
+    public PropAccessor(IPropValidator validator, Delegate getter, Delegate? setter = null)
     {
-        Descriptor = descriptor;
         Validator = validator;
         Getter = (Getter<TTarget, TValue>)getter;
         Setter = (Setter<TTarget, TValue>)setter;
     }
 
-    public PropDescriptor Descriptor { get; }
     public IPropValidator Validator { get; }
     public Getter<TTarget, TValue> Getter { get; }
     public Setter<TTarget, TValue> Setter { get; }
@@ -26,11 +24,9 @@ public class PropAccessor<TTarget, TValue>
 
     public void SetValue(ref object host, object value)
     {
-        if (Descriptor.IsReadOnly)
-            throw new Exception("Read only accessor");
         if (Setter == null)
             throw new Exception("No setter provided");
-        value = Validator?.Coerce(Descriptor, value) ?? value;
+        value = Validator?.Coerce(value) ?? value;
         if (typeof(TTarget).IsValueType)
         {
             var t = (TTarget)host;

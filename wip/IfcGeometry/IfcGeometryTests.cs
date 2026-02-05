@@ -42,7 +42,8 @@ IFCPOLYLOOP
 ";
 
         public static FilePath InputFile =
-            @"C:\Users\cdigg\data\Ara3D\impraria\0000100120-093 - OXAGON ADVANCED HEALTH CENTER\STAGE 3A - CONCEPT DESIGN\ARC\03-730000-0000100120-DAH-ARC-MDL-000009 _IFC_D.ifc";
+            @"C:\Users\cdigg\data\Ara3D\rvt\Snowdon Towers Sample Architectural.ifc";
+            //@"C:\Users\cdigg\data\Ara3D\impraria\0000100120-093 - OXAGON ADVANCED HEALTH CENTER\STAGE 3A - CONCEPT DESIGN\ARC\03-730000-0000100120-DAH-ARC-MDL-000009 _IFC_D.ifc";
             //PathUtil.GetCallerSourceFolder().RelativeFile("..", "..", "data", "AC20-FZK-Haus.ifc");
             //@"C:\Users\cdigg\data\Ara3D\snapshot-data\ifc\long_running\B11ALL.ifc";
 
@@ -401,9 +402,6 @@ IFCPOLYLOOP
             size += bg.FaceLoops.Count * 4;
             size += bg.FaceLoopOffsets.Count * 4;
             Console.WriteLine($"Binary geometry size = {size:N0}");
-
-            var pd = new IfcPropData(doc);
-            Console.WriteLine($"Binary property data size = {pd.SizeEstimate():N0}");
         }
 
         [Test]

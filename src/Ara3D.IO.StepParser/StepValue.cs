@@ -25,7 +25,7 @@ public class StepValue
 
     public StepKind GetListElementKind()
     {
-        if (IsList())
+        if (!IsList())
             throw new Exception("Not a list kind");
         var rawVals = RawValueData.AsArray(RawValue);
         if (rawVals.Length == 0)
@@ -140,4 +140,5 @@ public class StepValue
 
     public StepRawValueData RawValueData 
         => Resolver.RawValueData;
+
 }

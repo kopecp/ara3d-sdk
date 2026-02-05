@@ -1,90 +1,65 @@
-﻿using System.Diagnostics;
-using Ara3D.IO.StepParser;
-using Ara3D.Utils;
+﻿using Ara3D.IO.StepParser;
 
 namespace Ara3D.IfcGeometry;
 
-public class IfcPropSet
-{
-    public int Name;
-}
+public record struct IfcPropSet(
+    int Id, 
+    string Name, 
+    IReadOnlyList<int> Ids);
 
-public class IfcPropValue
-{
-    public int Value;
-    public int Name;
-}
+public record struct IfcPropValue(
+    int Id,
+    string Name,
+    StepValue Value);
 
-public class IfcPropSetToProp
-{
-    public int PropSetId;
-    public int PropId;
-}
-
-public class IfcObjectToPropSet
-{
-    public int ObjectId;
-    public int PropSetId;
-}
+public record struct IfcObjectToPropSet(
+    int ObjectId,
+    int PropSetId);
 
 public class IfcPropData
 {
+    public List<(int, Exception)> Errors = [];
+    public Dictionary<int, IfcPropValue> PropValues = [];
+    public Dictionary<int, IfcPropSet> PropSets = [];
     public List<IfcObjectToPropSet> ObjectToPropSets = [];
-    public List<IfcPropSetToProp> PropSetToProps = [];
-    public List<IfcPropValue> PropValues = [];
-    public List<IfcPropSet> PropSets = [];
-    public IndexedSet<string> Strings = new();
 
     public IfcPropData(StepDocument doc)
     {
         var res = new StepValueResolver(doc);
-        var propSetIdToIndex = new Dictionary<int, int>();
-        foreach (var val in res.GetDefinitionValues())
+        
+        foreach (var (defId, defVal) in res.GetDefinitionIdsAndValues())
         {
-            var name = val.GetEntityName();
-            var attrs = val.GetEntityAttributesValue().GetElements().ToList();
-            if (name is "IFCPROPERTYSET")
+            try
             {
-                Debug.Assert(attrs.Count == 5);
-                var propSetName = attrs[2].AsString();
-                var ids = attrs[4].AsIdList();
-                foreach (var id in ids)
+                var name = defVal.GetEntityName();
+                if (name is "IFCPROPERTYSET")
                 {
-                    PropSetToProps.Add(new IfcPropSetToProp() { PropSetId = PropSets.Count, PropId = id });
+                    var attrs = defVal.GetEntityAttributesValue().GetElements().ToList();
+                    var propSet = new IfcPropSet(defId, attrs[2].AsString(), attrs[4].AsIdList());
+                    PropSets.Add(defId, propSet);
                 }
-
-                PropSets.Add(new IfcPropSet { Name = Strings.Add(propSetName) });
-            }
-            else if (name is "IFCRELDEFINESBYPROPERTIES")
-            {
-                Debug.Assert(attrs.Count == 6);
-                var objectIds = attrs[4].AsIdList();
-                var propSetId = attrs[5].AsId();
-                foreach (var objectId in objectIds)
+                else if (name is "IFCRELDEFINESBYPROPERTIES")
                 {
-                    ObjectToPropSets.Add(new IfcObjectToPropSet() { ObjectId = objectId, PropSetId = propSetId });
+                    var attrs = defVal.GetEntityAttributesValue().GetElements().ToList();
+                    var objectIds = attrs[4].AsIdList();
+                    var propSetId = attrs[5].AsId();
+                    foreach (var objectId in objectIds)
+                    {
+                        ObjectToPropSets.Add(new(objectId, propSetId));
+                    }
+                }
+                else if (name is "IFCPROPERTYSINGLEVALUE")
+                {
+                    var attrs = defVal.GetEntityAttributesValue().GetElements().ToList();
+                    var propName = attrs[0].AsString();
+                    var propVal = attrs[2];
+                    PropValues.Add(defId, new(defId, propName, propVal));
                 }
             }
-            else if (name is "IFCPROPERTYSINGLEVALUE")
+            catch (Exception ex)
             {
-                Debug.Assert(attrs.Count == 4);
-                var propName = Strings.Add(attrs[0].AsString());
-                var propVal = attrs[2];
-                var propValStr = Strings.Add(propVal.ToString());
-                PropValues.Add(new IfcPropValue { Name = propName, Value = propValStr });
+                Errors.Add((defId, ex));
             }
         }
-
-    }
-
-    public long SizeEstimate()
-    {
-        var stringSizes = Strings.Keys.Sum(x => x.Length + 1);
-
-        return ObjectToPropSets.Count * 8
-               + PropSetToProps.Count * 8
-               + PropSets.Count * 4
-               + PropValues.Count * 8
-               + stringSizes;
     }
 }

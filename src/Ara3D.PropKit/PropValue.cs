@@ -17,7 +17,7 @@ public class PropValue
             throw new Exception(
                 $"Type of {value} is {value?.GetType()} which is not compatible with {Descriptor.GetType()}");
         Prop = prop;
-        Value = Validator?.Coerce(Descriptor, value) ?? value;
+        Value = Validator?.Coerce(value) ?? value;
     }
 
     public PropValue(Prop prop)

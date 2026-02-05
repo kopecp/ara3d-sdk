@@ -11,177 +11,113 @@ namespace Ara3D.PropKit;
 /// </summary>
 public static class PropFactory
 {
-    public static void GetRangeAsInt(RangeAttribute? rangeAttr, out int def, out int min, out int max)
+    public static Prop CreateProp(this PropertyInfo pi, object hostObj)
     {
-        min = (int)(rangeAttr?.Minimum ?? -1000);
-        max = (int)(rangeAttr?.Maximum ?? +1000);
-        def = Math.Clamp(0, min, max);
+        var desc = pi.CreateDescriptor();
+        var acc = pi.CreatePropAccessor(hostObj);
+        var val = pi.CreateValidator(hostObj);
+        var con = pi.CreateConstraints(hostObj);
+        return new Prop(desc, acc, val, null, con, null);
     }
 
-    public static void GetRangeAsFloat(RangeAttribute? rangeAttr, out float def, out float min, out float max)
+    public static Prop CreateProp(this FieldInfo fi, object hostObj)
     {
-        min = (float)(rangeAttr?.Minimum.CastToDouble() ?? -1000.0);
-        max = (float)(rangeAttr?.Maximum.CastToDouble() ?? +1000.0);
-        def = Math.Clamp(0, min, max);
+        var desc = fi.CreateDescriptor();
+        var acc = fi.CreatePropAccessor(hostObj);
+        var val = fi.CreateValidator(hostObj);
+        var con = fi.CreateConstraints(hostObj);
+        return new Prop(desc, acc, val, null, con, null);
     }
 
-    public static void GetRangeAsDouble(RangeAttribute? rangeAttr, out double def, out double min, out double max)
+    // TODO: get default constraints
+    // TODO: get default steppers
+    // TODO: get default codec 
+
+    public static PropConstraints CreateConstraints(this MemberInfo mi, object val)
     {
-        min = (rangeAttr?.Minimum.CastToDouble() ?? -1000.0);
-        max = (rangeAttr?.Maximum.CastToDouble() ?? +1000.0);
-        def = Math.Clamp(0, min, max);
+        var rangeAttr = mi.GetCustomAttribute<RangeAttribute>();
+        if (rangeAttr == null) return default;
+        return new(val, rangeAttr?.Minimum, rangeAttr?.Maximum);
     }
 
-    public static PropProviderWrapper GetBoundPropProvider(this object obj)
-        => new(obj, new PropProvider(obj.GetPropAccessors()));
+    public static PropConstraints CreateConstraints(this FieldInfo fi, object host)
+    {
+        return fi.CreateConstraints(fi.GetValue(host));
+    }
 
-    public static IEnumerable<IPropAccessor> GetPropAccessors(this object obj)
-        => obj.GetType().GetPropAccessors(obj);
+    public static PropConstraints CreateConstraints(this PropertyInfo pi, object host)
+    {
+        return pi.CreateConstraints(pi.GetValue(host));
+    }
 
-    public static PropProvider GetPropProvider(this Type type)
-        => new(GetPropAccessors(type));
+    public static IPropValidator CreateValidator(this PropertyInfo pi, object host)
+    {
+        var constraints = pi.CreateConstraints(host);
+        return constraints.HasMinMax ? new PropConstraintsValidator(constraints) : null;
+    }
+
+    public static IPropValidator CreateValidator(this FieldInfo fi, object host)
+    {
+        var constraints = fi.CreateConstraints(host);
+        return constraints.HasMinMax ? new PropConstraintsValidator(constraints) : null;
+    }
+
+    public static PropDescriptor CreateDescriptor(this MemberInfo mi, Type type)
+    {
+        var isReadOnly = IsReadOnly(mi);
+        var displayNameAttr = mi.GetCustomAttribute<DisplayNameAttribute>();
+        var descAttr = mi.GetCustomAttribute<DescriptionAttribute>();
+        return new(type, mi.Name, isReadOnly, displayNameAttr?.DisplayName, descAttr?.Description, mi.GetCustomAttributes().ToList());
+    }
+
+    public static PropDescriptor CreateDescriptor(this MemberInfo mi)
+        => mi is FieldInfo fi ? CreateDescriptor(fi)
+            : mi is PropertyInfo pi ? CreateDescriptor(pi) : null;
+
+    public static PropDescriptor CreateDescriptor(this FieldInfo fi)
+        => CreateDescriptor(fi, fi.FieldType);
+
+    public static PropDescriptor CreateDescriptor(this PropertyInfo pi)
+        => CreateDescriptor(pi, pi.PropertyType);
+
+    public static bool IsReadOnly(this MemberInfo mi)
+        => mi is FieldInfo fi
+            ? fi.IsInitOnly
+            : mi is not PropertyInfo pi || (pi.CanWrite || pi.GetSetMethod(false) != null);
 
     public static IPropAccessor CreatePropAccessor(
-        this PropDescriptor descriptor,
+        this IPropValidator validator,
         Type targetType, Type valueType,
         Delegate getterRef, Delegate? setterRef)
     {
         var open = typeof(PropAccessor<,>);
         var closed = open.MakeGenericType(targetType, valueType);
-        return (IPropAccessor)Activator.CreateInstance(closed, descriptor, getterRef, setterRef)!;
-    }
-    
-    public static IPropAccessor CreatePropAccessor(this Type type, object hostObj, Type targetType, RangeAttribute rangeAttr,
-        OptionsAttribute optionsAttr, string name, string displayName, string description, string units,
-        Delegate getter, Delegate setter)
-    {
-        var isReadOnly = setter == null;
-        var underlyingType = type;
-        if (type.IsEnum)
-        {
-            var names = Enum.GetNames(type);
-            if (names.Length == 0)
-            {
-                underlyingType = Enum.GetUnderlyingType(type);
-            }
-            else
-            {
-                return CreatePropAccessor(
-                    new PropDescriptorStringList(names, name, displayName, description, units, isReadOnly),
-                    targetType, type, getter, setter);
-            }
-        }
-
-        if (type == typeof(int) || underlyingType == typeof(int))
-        {
-            if (optionsAttr != null)
-            {
-                return CreatePropAccessor(
-                    new PropDescriptorDynamicStringList(() => optionsAttr.GetOptions(hostObj), name, displayName, description, units, isReadOnly),
-                    targetType, type, getter, setter);
-            }
-            else
-            {
-                GetRangeAsInt(rangeAttr, out var def, out var min, out var max);
-                return CreatePropAccessor(
-                    new PropDescriptorInt(name, displayName, description, units, isReadOnly, def, min, max),
-                    targetType, type, getter, setter);
-            }
-        }
-        else if (type == typeof(long) || underlyingType == typeof(long))
-        {
-            GetRangeAsInt(rangeAttr, out var def, out var min, out var max);
-            return CreatePropAccessor(
-                new PropDescriptorLong(name, displayName, description, units, isReadOnly, def, min, max),
-                targetType, type, getter, setter);
-        }
-        else if (type == typeof(float))
-        {
-            GetRangeAsFloat(rangeAttr, out var def, out var min, out var max);
-            return CreatePropAccessor(
-                new PropDescriptorFloat(name, displayName, description, units, isReadOnly, def, min, max),
-                targetType, type, getter, setter);
-        }
-        else if (type == typeof(double))
-        {
-            GetRangeAsDouble(rangeAttr, out var def, out var min, out var max);
-            return CreatePropAccessor(
-                new PropDescriptorDouble(name, displayName, description, units, isReadOnly, def, min, max),
-                targetType, type, getter, setter);
-        }
-        else if (type == typeof(bool))
-        {
-            return CreatePropAccessor(
-                new PropDescriptorBool(name, displayName, description, units, isReadOnly),
-                targetType, type, getter, setter);
-        }
-        else if (type == typeof(string))
-        {
-            return CreatePropAccessor(
-                new PropDescriptorString(name, displayName, description, units, isReadOnly),
-                targetType, type, getter, setter);
-        }
-        else if (type == typeof(Action))
-        {
-            return CreatePropAccessor(
-                new PropDescriptorAction(name, displayName, description),
-                targetType, type, getter, setter);
-        }
-        else
-        {
-            return CreatePropAccessor(
-                new GenericPropDescriptor(null, type, name, displayName, description, units, isReadOnly),
-                targetType, type, getter, setter);
-        }
+        return (IPropAccessor)Activator.CreateInstance(closed, validator, getterRef, setterRef)!;
     }
 
-    public static IPropAccessor CreatePropAccessor(Type type, object hostObj, Type targetType, MemberInfo mi, Delegate getter, Delegate setter)
+    public static IPropAccessor CreatePropAccessor(this PropertyInfo pi, object hostObj)
     {
-        var name = mi.Name;
-        var displayName = mi.Name.SplitCamelCase();
-        var description = "";
-        var units = "";
+        if (!pi.CanRead)
+            return null;
+        if (pi.GetIndexParameters().Length != 0)
+            return null;
 
-        var displayNameAttr = mi.GetCustomAttribute<DisplayNameAttribute>();
-        if (displayNameAttr != null)
-            displayName = displayNameAttr.DisplayName;
+        var setMeth = pi.GetSetMethod(false);
+        var isReadOnly = !pi.CanWrite || setMeth == null || setMeth.IsPrivate;
 
-        var rangeAttr = mi.GetCustomAttribute<RangeAttribute>();
-        var optionsAttr = mi.GetCustomAttribute<OptionsAttribute>();
+        var getter = pi.GetFastGetter();
+        var setter = !isReadOnly ? pi.GetFastSetter() : null;
 
-        return CreatePropAccessor(type, hostObj, targetType, rangeAttr, optionsAttr, name, displayName,
-            description, units, getter, setter);
+        return pi.CreateValidator(hostObj).CreatePropAccessor(pi.DeclaringType, pi.PropertyType, getter, setter);
     }
 
-    public static IEnumerable<IPropAccessor> GetPropAccessors(this Type type, object hostObj = null)
+    public static IPropAccessor CreatePropAccessor(this FieldInfo fi, object hostObj)
     {
-        var props = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
-        foreach (var prop in props)
-        {
-            if (!prop.CanRead)
-                continue;
-            if (prop.GetIndexParameters().Length != 0)
-                continue;
+        var isReadOnly = fi.IsInitOnly;
 
-            var setMeth = prop.GetSetMethod(false);
-            var isReadOnly = !prop.CanWrite || setMeth == null || setMeth.IsPrivate;
+        var getter = fi.GetFastGetter();
+        var setter = !isReadOnly ? fi.GetFastSetter() : null;
 
-            var getter = prop.GetFastGetter();
-            var setter = !isReadOnly ? prop.GetFastSetter() : null;
-
-            yield return CreatePropAccessor(prop.PropertyType, hostObj, type, prop, getter, setter);
-        }
-
-        var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
-        foreach (var field in fields)
-        {
-            var isReadOnly = field.IsInitOnly;
-
-            var getter = field.GetFastGetter();
-            var setter = !isReadOnly ? field.GetFastSetter() : null;
-
-            yield return CreatePropAccessor(field.FieldType, hostObj, type, field, getter, setter);
-
-        }
+        return fi.CreateValidator(hostObj).CreatePropAccessor(fi.DeclaringType, fi.FieldType, getter, setter);
     }
 }

@@ -6,5 +6,5 @@ public readonly record struct PropConstraints(
     object Max = null
 )
 {
-    bool HasMinMax => Min != null && Max != null;
+    public bool HasMinMax => Min != null && Max != null;
 }
