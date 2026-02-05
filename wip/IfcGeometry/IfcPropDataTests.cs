@@ -27,6 +27,8 @@ public static class IfcPropDataTests
 
     public static string ValToStr(StepValue val)
     {
+        if (val == null) return "_NULL_";
+
         if (val.IsEntity())
         {
             return $"{val.GetEntityName()} {val.GetEntityAttributesValue()}";
@@ -59,16 +61,35 @@ public static class IfcPropDataTests
     }
 
     [Test]
-    public static void TestProData()
+    public static void TestPropData()
     {
         var logger = Logger.Console;
         
         using var doc = new StepDocument(InputFile, logger);
         OutputDoc(doc, logger);
 
+        logger.Log("Constructing prop data");
         var pd = new IfcPropData(doc);
         logger.Log("Constructed prop data");
         OutputPropData(pd, logger);
+
+
+        logger.Log("Constructing classifier");
+        var c = new IfcClassifier(doc);
+        logger.Log("Constructed classifier");
+
+        logger.Log($"Found {c.Instances.Count} instances");
+        logger.Log($"Found {c.Types.Count} types");
+        logger.Log($"Found {c.InstanceToType.Count} instance to type mapping");
+
+        var distinctInstances = c.Instances.Values.Select(v => v.GetEntityName()).Distinct().Count();
+        logger.Log($"Found {distinctInstances} distinct instances");
+
+        var distinctTypes = c.Types.Values.Select(v => v.GetEntityName()).Distinct().Count();
+        logger.Log($"Found {distinctTypes} distinct types");
+
         logger.Log($"Completed");
+
+
     }
 }

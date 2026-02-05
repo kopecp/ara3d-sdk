@@ -141,4 +141,7 @@ public class StepValue
     public StepRawValueData RawValueData 
         => Resolver.RawValueData;
 
+    public bool IsMissing()
+        => GetKind() == StepKind.Redeclared || GetKind() == StepKind.Unassigned;
+
 }
