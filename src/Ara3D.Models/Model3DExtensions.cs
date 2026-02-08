@@ -200,4 +200,114 @@ public static class Model3DExtensions
 
         return new(meshes, instances);
     }
+
+    public static (Matrix4x4 Transform, int EntityIndex, Material Material, byte Flags)
+    GetInstanceGroupKey(InstanceStruct i)
+    {
+        return (i.Matrix4x4, i.EntityIndex, i.Material, i.Flags);
     }
+
+    public sealed class SequenceEqualityComparer<T>
+        : IEqualityComparer<IReadOnlyList<T>>
+    {
+        public bool Equals(IReadOnlyList<T>? x, IReadOnlyList<T>? y)
+        {
+            if (ReferenceEquals(x, y)) return true;
+            if (x is null || y is null || x.Count != y.Count) return false;
+            return x.SequenceEqual(y);
+        }
+
+        public int GetHashCode(IReadOnlyList<T> obj)
+        {
+            unchecked
+            {
+                int hash = 17;
+                foreach (var v in obj)
+                    hash = hash * 31 + v!.GetHashCode();
+                return hash;
+            }
+        }
+    }
+
+    // TODO: maybe should be in a geometry extensions class. 
+    public static TriangleMesh3D Merge(this IReadOnlyList<TriangleMesh3D> meshes)
+    {
+        if (meshes.Count == 0) return TriangleMesh3D.Default;
+        if (meshes.Count == 1) return meshes[0];
+
+        var points = new List<Point3D>();
+        var indices = new List<Integer3>();
+        foreach (var m in meshes)
+        {
+            var offset = points.Count;
+            points.AddRange(m.Points);
+            foreach (var i in m.FaceIndices)
+            {
+                indices.Add(
+                    new Integer3(
+                        i.A + offset,
+                        i.B + offset,
+                        i.C + offset));
+            }
+        }
+
+        return new(points, indices);
+    }
+
+    public static TriangleMesh3D MergeMeshes(this Model3D model, IReadOnlyList<int> indices)
+    {
+        var meshes = new List<TriangleMesh3D>();
+        foreach (var i in indices)
+        {
+            if (i >= 0)
+                meshes.Add(model.Meshes[i]);
+        }
+
+        return meshes.Merge();
+    }
+
+    public static Model3D MergeInstances(this Model3D model)
+    {
+        var groups = model.Instances.GroupBy(GetInstanceGroupKey).ToList();
+
+        var meshes = new List<TriangleMesh3D>();
+        var instances = new List<InstanceStruct>();
+
+        var meshIndexGroups = new Dictionary<IReadOnlyList<int>, int>(
+            new SequenceEqualityComparer<int>());
+
+        var groupMeshIndices = new List<int>();
+        foreach (var g in groups)
+        {
+            var meshIndexList = g.Select(i => i.MeshIndex).ToList();
+
+            if (!meshIndexGroups.TryGetValue(meshIndexList, out var meshIndex))
+            {
+                var index = meshes.Count;
+                var mergedMesh = model.MergeMeshes(meshIndexList);
+                meshes.Add(mergedMesh);
+                meshIndexGroups.Add(meshIndexList, index);
+                groupMeshIndices.Add(index);
+            }
+            else
+            {
+                groupMeshIndices.Add(meshIndex);
+            }
+        }
+
+        for (var i = 0; i < groups.Count; i++)
+        {
+            var g = groups[i];
+            var meshIndex = groupMeshIndices[i];
+            var inst = new InstanceStruct(
+                g.Key.EntityIndex,
+                g.Key.Transform,
+                meshIndex,
+                g.Key.Material,
+                g.Key.Flags);
+            instances.Add(inst);
+        }
+
+        return new(meshes, instances);
+    }
+}

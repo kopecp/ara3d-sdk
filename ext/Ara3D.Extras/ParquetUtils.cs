@@ -165,6 +165,7 @@ public static class ParquetUtils
     public static IDataSet ReadParquetFromZip(this FilePath filePath)
         => Task.Run(() => filePath.ReadParquetFromZipAsync()).GetAwaiter().GetResult();
 
+
     public static void WriteParquetToZip(this BimGeometry bg, FilePath file,
         CompressionMethod parquetCompressionMethod = CompressionMethod.Brotli,
         CompressionLevel parquetCompressionLevel = CompressionLevel.Optimal,
