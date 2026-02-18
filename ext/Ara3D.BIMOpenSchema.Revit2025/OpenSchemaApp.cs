@@ -1,6 +1,5 @@
 ﻿using Ara3D.Bowerbird.RevitSamples;
 using Ara3D.Logging;
-using Ara3D.Utils;
 using Autodesk.Revit.UI;
 using System.Reflection;
 using System.Windows.Media.Imaging;
@@ -61,7 +60,7 @@ namespace Ara3D.BIMOpenSchema.Revit2025
             if (!(rvtRibbonPanel.AddItem(pushButtonData) is PushButton runButton))
                 return Result.Failed;
             runButton.LargeImage = GetImage();
-            runButton.ToolTip = "Export a zip archive of Parquet files conforming to the BIM Open Schema.";
+            runButton.ToolTip = "Export a zip archive of parquet files with extension .BOS.";
 
             return Result.Succeeded;
         } 
@@ -70,19 +69,7 @@ namespace Ara3D.BIMOpenSchema.Revit2025
         {
             UiApp ??= application;
             Form ??= new BIMOpenSchemaExporterForm();
-            Form.Show(UiApp.ActiveUIDocument?.Document);
+            Form.Show(UiApp);
         }
-
-        public static FilePath GetAddInAssemblyPath
-            => Assembly.GetExecutingAssembly().Location;
-
-        public static FilePath BrowserAppPath
-            => GetAddInAssemblyPath.RelativeFile(BrowserAppName);
-
-        public static string BrowserAppName
-            => "Ara3D.BimOpenSchema.Browser.exe";
-
-        public static FilePath Ara3dStudioExePath 
-            => SpecialFolders.LocalApplicationData.RelativeFile("Ara 3D", "Ara 3D Studio", "Ara3D.exe");
     }
 }

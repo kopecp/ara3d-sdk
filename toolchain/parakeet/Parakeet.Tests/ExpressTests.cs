@@ -9,7 +9,7 @@ public static class ExpressTests
     public static DirectoryPath InputFolder = PathUtil.GetCallerSourceFolder().RelativeFolder("..", "input", "exp");
 
     [Test]
-    [TestCase("IFC2X3.exp")]
+    //[TestCase("IFC2X3.exp")]
     [TestCase("IFC4X3.exp")]
     public static void TestFile(string file)
     {

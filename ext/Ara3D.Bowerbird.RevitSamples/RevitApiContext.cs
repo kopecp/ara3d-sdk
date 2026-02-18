@@ -7,7 +7,7 @@ namespace Ara3D.Bowerbird.RevitSamples;
 /// <summary>
 /// This allows you to execute arbitrary Revit code within a valid UI context. 
 /// </summary>
-public static class ApiContext
+public static class RevitApiContext
 {
     [DllImport("USER32.DLL")]
     public static extern bool PostMessage(IntPtr hWnd, uint msg, uint wParam, uint lParam);
@@ -44,4 +44,7 @@ public static class ApiContext
         var eeh = new ExternalEventHandler(action, name);
         return ExternalEvent.Create(eeh);
     }
+
+    public static void DoWork(Action<UIApplication> action, string name = "")
+        => CreateEvent(action, name).Raise();
 }

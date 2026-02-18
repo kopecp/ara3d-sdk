@@ -34,6 +34,12 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Update="BIMOpenSchemaExporterForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="call post-build.bat $(OutDir)" />
   </Target>

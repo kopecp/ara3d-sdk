@@ -50,7 +50,7 @@ namespace Ara3D.Bowerbird.RevitSamples
         public BackgroundProcessor(Action<T> processor, UIApplication uiApp)
         {
             Processor = processor;
-            ExternalEventHeartbeat = ApiContext.CreateEvent(On_ExternalEventHeartbeat, "Heartbeat");
+            ExternalEventHeartbeat = RevitApiContext.CreateEvent(On_ExternalEventHeartbeat, "Heartbeat");
             UIApp = uiApp;
             Enable();
         }
@@ -246,7 +246,7 @@ namespace Ara3D.Bowerbird.RevitSamples
         {
             if (RevitProcess?.HasExited == true || RevitProcess == null)
                 return;
-            ApiContext.PostMessage(RevitProcess.MainWindowHandle, 0, 0, 0);
+            RevitApiContext.PostMessage(RevitProcess.MainWindowHandle, 0, 0, 0);
         }
     }
 }
