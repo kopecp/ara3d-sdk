@@ -39,7 +39,7 @@ namespace Ara3D.Parakeet.Tests
         {
             if (outputInput)
             {
-                Console.WriteLine($"Testing Rule {rule} with input {input}");
+                Console.WriteLine($"Testing Rule {rule} with input {input.Text}");
             }
             else
             {
