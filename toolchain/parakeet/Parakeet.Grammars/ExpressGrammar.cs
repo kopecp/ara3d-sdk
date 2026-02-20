@@ -1,4 +1,4 @@
-﻿    namespace Ara3D.Parakeet.Grammars
+﻿namespace Ara3D.Parakeet.Grammars
 {
     /// <summary>
     /// IFC-focused EXPRESS grammar:
@@ -15,7 +15,8 @@
 
         // -----------------------------
         // Blocks 
-        // These are used for parsing out chunks of the express file at a time. 
+        // These are used for parsing out chunks of the express file at a time.
+        // Separately from code generation. 
         // -----------------------------
 
         public Rule EntityBlock => Node("ENTITY" + AnyCharUntilPast("END_ENTITY;"));
@@ -41,23 +42,21 @@
         // -----------------------------
 
         public new Rule Identifier => Node(IdentifierFirstChar + IdentifierChar.ZeroOrMore());
-        public Rule Eos => Named(Sym(";")); 
+        public Rule Eos => Named(Sym(";"));
+        public Rule StringLiteralChar => Named("''" | Not("'") + AnyChar);
+        public Rule StringLiteral => Node("'" + StringLiteralChar.ZeroOrMore() + "'");
 
         // -----------------------------
         // Bounds and aggregation
         // -----------------------------
 
         public Rule QMark => Named(Sym("?")); 
-        public Rule Bound => Node(Integer | QMark);
-
-        // [lower:upper]
-        public Rule Dim => Node(Sym("[") + Bound + Sym(":") + Bound + Sym("]"));
-
-        public Rule AggregationKeyword => Named(Keywords("SET", "LIST", "BAG", "ARRAY"));
-        public Rule UniqueKeyword => Named(Keyword("UNIQUE"));
-        public Rule OptionalKeyword => Named(Keyword("OPTIONAL"));
-        public Rule OfKeyword => Named(Keyword("OF"));
-        public Rule NamedType => Node(Identifier);
+        public Rule Bound => Named(Integer | QMark);
+        public Rule Dim => Named(Sym("[") + Bound + Sym(":") + Bound + Sym("]"));
+        public Rule AggregationKeyword => Keywords("SET", "LIST", "BAG", "ARRAY");
+        public Rule UniqueKeyword => Keyword("UNIQUE");
+        public Rule OptionalKeyword => Keyword("OPTIONAL");
+        public Rule OfKeyword => Keyword("OF");
 
         // Aggregation: SET [1:?] OF <TypeExpr>
         // Also supports "SET OF ..." (no dimension) which appears in local declarations sometimes.
@@ -65,52 +64,77 @@
         public Rule AggregationType => Node(
             AggregationKeyword
             + Dim.Optional()
-            + OfKeyword
+            + OfKeyword 
             + UniqueKeyword.Optional()
-            + Recursive(nameof(TypeExpr))
-        );
+            + Recursive(nameof(TypeExpr)));
 
         // Type expression we care about for IFC entities:
         // OPTIONAL? (AggregationType | NamedType)
-        public Rule TypeExpr => Node(OptionalKeyword.Optional() + (AggregationType | NamedType));
+        public Rule TypeExpr 
+            => Node(OptionalKeyword.Optional() + (AggregationType | Identifier));
 
         // -----------------------------
-        // ENTITY parsing (what you want)
+        // TYPE parsing (for enums, selects, aliases)
+        // -----------------------------
+
+        public Rule EndType 
+            => Named(Keyword("END_TYPE") + Eos);
+
+        // TYPE IfcFoo = <TypeDef> ; END_TYPE;
+        public Rule TypeDecl => Node(
+            Keyword("TYPE")
+            + Identifier
+            + Sym("=") + AbortOnFail
+            + TypeDef
+            + Eos
+            + EndType);
+
+        // What can appear on the RHS of "TYPE X = ...;"
+        public Rule TypeDef => Node(
+            EnumerationType
+            | SelectType
+            | TypeExpr   
+        );
+
+        // ENUMERATION OF (A, B, C)
+        public Rule EnumerationType 
+            => Node(Keyword("ENUMERATION") + Keyword("OF") + IdentifierList);
+
+        // SELECT (A, B, C)
+        public Rule SelectType
+            => Node(Keyword("SELECT") + IdentifierList);
+        
+        // -----------------------------
+        // ENTITY parsing 
         // -----------------------------
 
         // Header clauses WITHOUT trailing semicolon
-        public Rule SubtypeHeader => Node(Keyword("SUBTYPE") + Keyword("OF") + IdentifierList);
+        public Rule SubtypeHeader 
+            => Node(Keyword("SUBTYPE") + Keyword("OF") + IdentifierList);
 
         // SUPERTYPE OF(ONEOF (A, B))
-        public Rule OneOfSupertype => Node(Parenthesized(Keyword("ONEOF") + WS + IdentifierList));
+        public Rule OneOfSupertype 
+            => Node(Parenthesized(Keyword("ONEOF") + WS + IdentifierList));
 
-        public Rule SupertypeHeader => Node(Keyword("ABSTRACT").Optional() + Keyword("SUPERTYPE")
-            + Keyword("OF")
-            + (OneOfSupertype | IdentifierList) // allow SUPERTYPE OF(SomeList) too
-        );
+        public Rule SupertypeHeader 
+            => Node(Keyword("ABSTRACT").Optional() + Keyword("SUPERTYPE") + Keyword("OF") + (OneOfSupertype | IdentifierList));
 
         // Entity header ends at the FIRST semicolon after ENTITY name and optional headers.
         public Rule EntityHeader => Node(
             Keyword("ENTITY")
-            + Identifier 
+            + AbortOnFail
+            + Identifier
             + SupertypeHeader.Optional()
             + SubtypeHeader.Optional() 
-            + Eos
-        );
+            + Eos);
+        
+        // -----------------------------
+        // ENTITY headers: abstract/supertype/subtype
+        // -----------------------------
 
         // (A, B, C)
-        public Rule IdentifierList => Node(ParenthesizedList(Identifier));
-
-        // SUBTYPE OF (A, B);
-        public Rule SubtypeClause => Node(Keyword("SUBTYPE") + Keyword("OF") + IdentifierList + Eos);
-
-        // ABSTRACT SUPERTYPE OF (ONEOF(...)); appears in IFC sometimes, but you said you mainly need subtypes.
-        // We'll parse it as "noise" so it doesn't break the entity.
-        public Rule SupertypeNoise => Node(
-            Keyword("ABSTRACT").Optional()
-            + Keyword("SUPERTYPE")
-            + Keyword("OF")
-            + AnyCharUntilPast(Eos));
+        public Rule IdentifierList 
+            => Node(ParenthesizedList(Identifier));
 
         // Attribute declaration:
         //   Name : TypeExpr;
@@ -119,43 +143,48 @@
         // Sections we mostly ignore (but must not break parse):
         // DERIVE ... WHERE ... INVERSE ... UNIQUE ... etc.
         // We'll just "eat" them safely until END_ENTITY.
-        public Rule EntityInnerNoiseSectionHeader => Named(
-            Keyword("DERIVE") | Keyword("WHERE") | Keyword("INVERSE") | Keyword("UNIQUE") | Keyword("LOCAL"));
+        public Rule EntityInnerSectionHeader 
+            => Named(Keyword("DERIVE") | Keyword("WHERE") | Keyword("INVERSE") | Keyword("UNIQUE") | Keyword("LOCAL") | Keyword("END_ENTITY"));
 
-        public Rule EntityInnerNoiseSection => Node(
-            EntityInnerNoiseSectionHeader
-            + AnyCharUntilAt(Keyword("END_ENTITY") | EntityInnerNoiseSectionHeader));
+        public Rule EntityInnerSections 
+            => Named(EntityInnerSectionHeader.At() + AnyCharUntilAt(Keyword("END_ENTITY")));
 
         // Explicit attribute lines appear before DERIVE/WHERE/INVERSE (typically).
         // We'll parse as many AttributeDecl as possible, then skip other sections until END_ENTITY.
-        public Rule EntityBody => Node(AttributeDecl.ZeroOrMore() + EntityInnerNoiseSection.ZeroOrMore());
+        public Rule EntityBody => Node(AttributeDecl.ZeroOrMore());
 
-        public Rule EndEntity => Node(Keyword("END_ENTITY") + Eos);
+        public Rule EndEntity => Named(Keyword("END_ENTITY") + Eos);
 
         // ENTITY IfcFoo; [SubtypeClause]? [SupertypeNoise]? <AttributeDecl...> END_ENTITY;
-        public Rule Entity => Node(EntityHeader + EntityBody + EndEntity);
+        public Rule Entity => Node(EntityHeader + AbortOnFail + EntityBody + EntityInnerSections + EndEntity);
 
         // -----------------------------
         // Top-level (file) parsing
         // -----------------------------
-        // We *can* optionally parse SCHEMA header, but IFC files sometimes include it.
-        public Rule SchemaHeader => Node(Keyword("SCHEMA") + Identifier + Eos);
 
+        // Optional SCHEMA header/footer (IFC has them)
+        public Rule SchemaHeader => Node(Keyword("SCHEMA") + Identifier + Eos);
         public Rule EndSchema => Node(Keyword("END_SCHEMA") + Eos);
 
-        // Type and other declarations exist; we can skip them safely.
-        // If later you want ENUM/TYPE extraction, we can add it without changing Entity parsing.
-        public Rule TypeDeclNoise => Node(Keyword("TYPE") + AnyCharUntilPast(Keyword("END_TYPE") + Eos));
+        // Keep skipping FUNCTION/RULE blocks and comments
+        public Rule OtherTopLevelNoise => Named(SkippedSection | Comment);
 
-        public Rule OtherTopLevelNoise => Named(TypeDeclNoise | SkippedSection | Comment);
+        // If you still want to tolerate unknown blocks, you can keep a “fallback eater”
+        public Rule UnknownTopLevelChunk => Named(AnyChar); // last resort
 
-        public Rule TopLevelDecl => Named(Entity | OtherTopLevelNoise);
+        public Rule TopLevelDecl => Named(
+            TypeDecl
+            | Entity
+            | OtherTopLevelNoise
+            | UnknownTopLevelChunk);
 
-        public Rule File => Node(WS
+        public Rule File => Node(
+            WS
             + SchemaHeader.Optional() + WS
             + TopLevelDecl.ZeroOrMore() + WS
             + EndSchema.Optional() + WS
-            + EndOfInput);
+            + EndOfInput
+        );
 
         public override Rule StartRule => File;
     }

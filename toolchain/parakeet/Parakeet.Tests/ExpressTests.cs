@@ -1,8 +1,6 @@
-﻿using Ara3D.Parakeet.Grammars;
+﻿using System.Diagnostics;
+using Ara3D.Parakeet.Grammars;
 using Ara3D.Utils;
-using System.Collections.Generic;
-using System.Data;
-using static Ara3D.Utils.Parallelizer;
 
 namespace Ara3D.Parakeet.Tests;
 
@@ -43,7 +41,7 @@ public static class ExpressTests
         var entityRule = ExpressGrammar.Instance.Entity;
         var cnt = 0;
         var pass = 0;
-        foreach (var t in GetEntities())
+        foreach (var t in GetExpressEntities())
         {
             var result = BasicTest(t, entityRule);
             if (!result)
@@ -60,19 +58,104 @@ public static class ExpressTests
         Console.WriteLine($"Entity test results = {pass} of {cnt}");
     }
 
+    public static ParserTreeNode GetEntityBody(ParserTreeNode node)
+    {
+        Assert.AreEqual("Entity", node.Node.Name);
+        return node.Children.FirstOrDefault(c => c.Node.Name == "EntityBody");
+    }
+
+    public static string GetEntityName(ParserTreeNode node)
+    {
+        Assert.AreEqual("Entity", node.Node.Name);
+        return node.Children[0].Children[0].Contents;
+    }
+
+    public static string GetTypeString(ParserTreeNode node)
+    {
+        Assert.AreEqual("TypeExpr", node.Node.Name);
+        var partTwo = node.Children[0];
+        if (partTwo.Node.Name == "AggregationType")
+        {
+            Assert.AreEqual(1, partTwo.Children.Count);
+            var innerType = GetTypeString(partTwo.Children[0]);
+            return $"List<{innerType}>";
+        }
+        else if (partTwo.Node.Name == "Identifier")
+        {
+            return partTwo.Node.Contents;
+        }
+
+        throw new Exception($"Unexpected type: {node}");
+    }
+
+    public static void OutputAttribute(ParserTreeNode node)
+    {
+        Assert.AreEqual("AttributeDecl", node.Node.Name);
+        var name = node.Children[0].Contents;
+        var type = GetTypeString(node.Children[1]);
+        Console.WriteLine($"  {type} {name};");
+    }
+
+    public static string GetEntitySubType(ParserTreeNode node)
+    {
+        Assert.AreEqual("Entity", node.Node.Name);
+        var header = node.Children[0];
+        var subTypeHeader = header.Children.FirstOrDefault(c => c.Node.Name == "SubtypeHeader");
+        if (subTypeHeader == null) return null;
+        var identList = subTypeHeader.Children[0];
+        return identList.Children[0].Contents;
+    }
+
+    public static void OutputAttributes(ParserTreeNode node)
+    {
+        var body = GetEntityBody(node);
+        var attrs = body.Children;
+        foreach (var attr in attrs)
+            OutputAttribute(attr);
+    }
 
     [Test]
-    public static void Testypes()
+    public static void TestEntityAttributes()
     {
-        var typeRule = ExpressGrammar.Instance.TypeExpr;
+        var entityRule = ExpressGrammar.Instance.Entity;
         var cnt = 0;
         var pass = 0;
-        foreach (var t in GetEntities())
+        foreach (var t in GetExpressEntities())
+        {
+            var ps = entityRule.Parse(t);
+            if (ps == null) {
+                Console.WriteLine($"Test {cnt} failed");
+            }
+            else
+            {
+                var tree = ps.Node.ToParseTree();
+                //Console.WriteLine(tree.ToString());
+                var name = GetEntityName(tree);
+                var subType = GetEntitySubType(tree);
+                Console.WriteLine($"class {name}");
+                if (!subType.IsNullOrWhiteSpace()) Console.WriteLine($" : {subType}");
+                Console.WriteLine("{");
+                OutputAttributes(tree);
+                Console.WriteLine("}");
+            }
+
+            cnt++;
+        }
+        Console.WriteLine($"Entity test results = {pass} of {cnt}");
+    }
+
+    [Test]
+    public static void TestTypes()
+    {
+        var typeRule = ExpressGrammar.Instance.TypeDecl;
+        var cnt = 0;
+        var pass = 0;
+        foreach (var t in GetExpressTypes())
         {
             var result = BasicTest(t, typeRule);
             if (!result)
             {
-                Console.WriteLine($"Failed entity test #{cnt}:");
+                Console.WriteLine($"Failed type test #{cnt}:");
                 Console.WriteLine($"Input was: {t}");
             }
             else
@@ -81,10 +164,67 @@ public static class ExpressTests
             }
             cnt++;
         }
-        Console.WriteLine($"Entity test results = {pass} of {cnt}");
+        Console.WriteLine($"Types test results = {pass} of {cnt}");
     }
 
-    public static IEnumerable<string> GetTypes() {
+    public static void GenerateCodeForSelect(ParserTreeNode node, string name)
+    {
+        Assert.AreEqual("SelectType", node.Node.Name);
+        var options = node.Children[0].Children.Select(c => c.Contents);
+        Console.WriteLine($"interface {name} {{ }}");
+        Console.WriteLine("// " + options.JoinStringsWithComma());
+    }
+
+    public static void GenerateCodeForEnum(ParserTreeNode node, string name)
+    {
+        Assert.AreEqual("EnumerationType", node.Node.Name);
+        var options = node.Children[0].Children.Select(c => c.Contents);
+        Console.WriteLine($"enum {name} {{");
+        foreach (var option in options)
+            Console.WriteLine($"  {option},");
+        Console.WriteLine("}");
+    }
+
+    [Test]
+    public static void TestTypeCodeGeneration()
+    {
+        var typeRule = ExpressGrammar.Instance.TypeDecl;
+        var cnt = 0;
+
+        foreach (var t in GetExpressTypes())
+        {
+            var ps = typeRule.Parse(t);
+            if (ps == null)
+            {
+                Console.WriteLine($"Test {cnt} failed");
+            }
+            else
+            {
+
+                var tree = ps.Node.ToParseTree();
+                var name = tree.Children[0].Node.Contents;
+                var typeDef = tree.Children[1].Children[0];
+
+                //Console.WriteLine($"Node {name} is {typeDef.Node.Name}");
+                
+                if (typeDef.Node.Name == "EnumerationType")
+                    GenerateCodeForEnum(typeDef, name);
+                else if (typeDef.Node.Name == "SelectType")
+                    GenerateCodeForSelect(typeDef, name);
+                else if (typeDef.Node.Name == "TypeExpr")
+                {
+                    var typeExpr = GetTypeString(typeDef);
+                    Console.WriteLine($"type {name} => {typeExpr}");
+                }
+                else
+                    throw new Exception($"Unrecognized type {typeDef}");
+            }
+
+            cnt++;
+        }
+    }
+
+    public static IEnumerable<string> GetExpressTypes() {
         var pi = GetExpressFileAsParserInput();
         var rule = ExpressGrammar.Instance.TypeBlocks;
         var ps = rule.Parse(pi);
@@ -92,7 +232,7 @@ public static class ExpressTests
         return ps.AllEndNodes().Select(n => n.Contents);
     }
 
-    public static IEnumerable<string> GetEntities()
+    public static IEnumerable<string> GetExpressEntities()
     {
         var pi = GetExpressFileAsParserInput();
         var rule = ExpressGrammar.Instance.EntityBlocks;
@@ -256,20 +396,60 @@ END_RULE;"
         ParserTests.SingleParseTest(full, Grammar.Entity);
     }
 
-    [Test]
-    public static void TestEndEntityDetectionEvenWithStrings()
+    public static string[] EntityHeaderVariants =
     {
-        var input = @"
-ENTITY X;
-  A : INTEGER;
-WHERE
-  WR1 : ('END_ENTITY' = 'END_ENTITY') AND (A > 0);
-END_ENTITY;";
-        ParserTests.SingleParseTest(input, Grammar.Entity);
-    }
+        "ENTITY A;",
+
+        // no space before '('
+        @"ENTITY B
+      SUBTYPE OF(Parent);",
+
+        // space before '('
+        @"ENTITY C
+      SUBTYPE OF (Parent);",
+
+        // ABSTRACT + SUPERTYPE OF + ONEOF formatting
+        @"ENTITY D
+      ABSTRACT SUPERTYPE OF(ONEOF
+        (D1, D2))
+      SUBTYPE OF(Parent);",
+    };
+
+    [Test]
+    [TestCaseSource(nameof(EntityHeaderVariants))]
+    public static void TestEntityHeaderVariants(string input)
+        => ParserTests.SingleParseTest(input, Grammar.EntityHeader);
 
     // ----------------------------------------
-    // ENTITY parsing (snippets you provided)
+    // Type parsing 
+    // ----------------------------------------
+    public static string[] TypeDecls =
+    {
+        @"TYPE IfcDoorTypeEnum = ENUMERATION OF
+  ( DOOR, GATE, USERDEFINED );
+END_TYPE;",
+
+        @"TYPE IfcFillAreaStyle = SELECT
+  ( IfcFillAreaStyleHatching, IfcFillAreaStyleTiles );
+END_TYPE;",
+
+        @"TYPE IfcLabel = STRING;
+END_TYPE;",
+        
+        @"TYPE IfcAbsorbedDoseMeasure = REAL;
+        END_TYPE;",
+
+        @"TYPE IfcUnitAssignment = SET [1:?] OF IfcUnit;
+END_TYPE;",
+    };
+
+    [Test]
+    [TestCaseSource(nameof(TypeDecls))]
+    public static void TestTypeDecl(string input)
+        => ParserTests.SingleParseTest(input, Grammar.TypeDecl);
+
+    // ----------------------------------------
+    // ENTITY parsing 
     // ----------------------------------------
     public static string[] Entities =
     {
@@ -299,7 +479,7 @@ END_ENTITY;",
 END_ENTITY;",
 
         // subtype clause example
-        @"ENTITY IfcDistributionChamberElementType;
+        @"ENTITY IfcDistributionChamberElementType
  SUBTYPE OF (IfcDistributionFlowElementType);
     PredefinedType : IfcDistributionChamberElementTypeEnum;
  WHERE
@@ -443,7 +623,7 @@ END_ENTITY;",
     [Test]
     [TestCaseSource(nameof(Entities))]
     public static void TestEntity(string input)
-        => ParserTests.SingleParseTest(input, Grammar.Entity);
+        => ParserTests.SingleParseTest(input, Grammar.Entity, true);
 
     // ----------------------------------------
     // File parsing test

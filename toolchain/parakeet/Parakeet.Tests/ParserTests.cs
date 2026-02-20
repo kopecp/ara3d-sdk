@@ -32,8 +32,8 @@ namespace Ara3D.Parakeet.Tests
             }
         }
 
-        public static void SingleParseTest(string input, Rule r)
-            => Assert.AreEqual(1, ParseTest(input, r));
+        public static void SingleParseTest(string input, Rule r, bool debug = false)
+            => Assert.AreEqual(1, ParseTest(new ParserInput(input, "", debug), r));
 
         public static int ParseTest(ParserInput input, Rule rule, bool outputInput = true)
         {
@@ -68,7 +68,7 @@ namespace Ara3D.Parakeet.Tests
 
             if (ps == null)
             {
-                Console.WriteLine($"FAILED");
+                Console.WriteLine($"FAILED (with no ParseState)");
             }
             else if (ps.AtEnd())
             {
