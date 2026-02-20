@@ -54,160 +54,57 @@ public static unsafe class StepTokenizer
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
     }
-        
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private static StepTokenType ParseToken(ref byte* cur, byte* end)
     {
         Debug.Assert(cur < end);
-        switch (*cur++)
+
+        byte c = *cur++;
+
+        // Fast path: single-byte tokens via lookup (make sure TokenLookup is set for these)
+        // e.g. '(' ')' '=' ';' ',' '*' etc.
+        var t = TokenLookup[c];
+        if (t != StepTokenType.None)
+            return t;
+
+        // Whitespace (including \r\n etc.)
+        if (IsWhiteSpaceLookup[c])
         {
-            case (byte)'(':
-                return StepTokenType.BeginGroup;
+            while (cur < end && IsWhiteSpaceLookup[*cur]) cur++;
+            return StepTokenType.Whitespace;
+        }
 
-            case (byte)')':
-                return StepTokenType.EndGroup;
+        // Identifier start (you should have a separate start table)
+        // If you don't, you can approximate with: IsIdentLookup[c] && !IsDigitLookup[c]
+        if (IsIdentLookup[c] && !IsDigitLookup[c])
+        {
+            while (cur < end && IsIdentLookup[*cur]) cur++;
+            return StepTokenType.Identifier;
+        }
 
-            case (byte)'=':
-                return StepTokenType.Definition;
-                
-            case (byte)';':
-                return StepTokenType.EndOfLine;
+        // Number start (digit; optionally also + - . depending on STEP number grammar)
+        if (IsDigitLookup[c])
+        {
+            while (cur < end && IsNumberLookup[*cur]) cur++;
+            return StepTokenType.Number;
+        }
 
-            case (byte)'$':
-                return StepTokenType.EndGroup;
-
-            case (byte)',':
-                return StepTokenType.Separator;
-
-            case (byte)'*':
-                return StepTokenType.Redeclared;
-
-            case (byte)' ':
-            case (byte)'\t':
-            case (byte)'\n':
-            case (byte)'\r':
-                while (cur < end && IsWhiteSpaceLookup[*cur]) cur++;
-                return StepTokenType.Whitespace;
-
-            case (byte)'a':
-            case (byte)'b':
-            case (byte)'c':
-            case (byte)'d':
-            case (byte)'e':
-            case (byte)'f':
-            case (byte)'g':
-            case (byte)'h':
-            case (byte)'i':
-            case (byte)'j':
-            case (byte)'k':
-            case (byte)'l':
-            case (byte)'m':
-            case (byte)'n':
-            case (byte)'o':
-            case (byte)'p':
-            case (byte)'q':
-            case (byte)'r':
-            case (byte)'s':
-            case (byte)'t':
-            case (byte)'u':
-            case (byte)'v':
-            case (byte)'w':
-            case (byte)'x':
-            case (byte)'y':
-            case (byte)'z':
-            case (byte)'A':
-            case (byte)'B':
-            case (byte)'C':
-            case (byte)'D':
-            case (byte)'E':
-            case (byte)'F':
-            case (byte)'G':
-            case (byte)'H':
-            case (byte)'I':
-            case (byte)'J':
-            case (byte)'K':
-            case (byte)'L':
-            case (byte)'M':
-            case (byte)'N':
-            case (byte)'O':
-            case (byte)'P':
-            case (byte)'Q':
-            case (byte)'R':
-            case (byte)'S':
-            case (byte)'T':
-            case (byte)'U':
-            case (byte)'V':
-            case (byte)'W':
-            case (byte)'X':
-            case (byte)'Y':
-            case (byte)'Z':
-            case (byte)'_':
-                while (cur < end && IsIdentLookup[*cur]) cur++;
-                return StepTokenType.Identifier;
-
+        // Multi-byte/special starters
+        switch (c)
+        {
             case (byte)'"':
-            {
-                byte q = (byte)'"';
-                while (cur < end)
-                {
-                    if (*cur != q) { cur++; continue; }
-
-                    // *cur is a quote
-                    if (cur + 1 < end && cur[1] == q)
-                    {
-                        // Escaped quote: "" -> consume both and continue
-                        cur += 2;
-                        continue;
-                    }
-
-                    // Closing quote
-                    cur++; // consume terminator
-                    return StepTokenType.DoubleQuotedString;
-                }
-
-                // Unterminated string: decide how you want to handle this (error token, etc.)
+                ScanQuoted(ref cur, end, (byte)'"');
                 return StepTokenType.DoubleQuotedString;
-            }
 
             case (byte)'\'':
-            {
-                byte q = (byte)'\'';
-                while (cur < end)
-                {
-                    if (*cur != q) { cur++; continue; }
-
-                    // *cur is a quote
-                    if (cur + 1 < end && cur[1] == q)
-                    {
-                        // Escaped quote: '' -> consume both and continue
-                        cur += 2;
-                        continue;
-                    }
-
-                    // Closing quote
-                    cur++; // consume terminator
-                    return StepTokenType.SingleQuotedString;
-                }
-
+                ScanQuoted(ref cur, end, (byte)'\'');
                 return StepTokenType.SingleQuotedString;
-            }
-
-            case (byte)'0':
-            case (byte)'1':
-            case (byte)'2':
-            case (byte)'3':
-            case (byte)'4':
-            case (byte)'5':
-            case (byte)'6':
-            case (byte)'7':
-            case (byte)'8':
-            case (byte)'9':
-                while (cur < end && IsNumberLookup[*cur]) cur++;
-                return StepTokenType.Number;
 
             case (byte)'.':
+                // STEP symbol like .T. .F. .ENUM.
                 while (cur < end && IsIdentLookup[*cur]) cur++;
-                cur++; // Skip the closing '.'
+                if (cur < end && *cur == (byte)'.') cur++; // only consume if present
                 return StepTokenType.Symbol;
 
             case (byte)'#':
@@ -215,14 +112,51 @@ public static unsafe class StepTokenizer
                 return StepTokenType.Id;
 
             case (byte)'/':
-                var prev = *cur++;
-                while (cur < end && (prev != '*' || *cur != '/'))
-                    prev = *cur++;
-                cur++;
+                // Comment: /* ... */
+                if (cur >= end) return StepTokenType.Unknown;
+                if (*cur != (byte)'*') return StepTokenType.Unknown; // if you only support /* */
+                cur++; // consume '*'
+                ScanBlockComment(ref cur, end);
                 return StepTokenType.Comment;
 
             default:
                 return StepTokenType.Unknown;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ScanQuoted(ref byte* cur, byte* end, byte q)
+    {
+        // cur points just after opening quote
+        while (cur < end)
+        {
+            if (*cur != q) { cur++; continue; }
+
+            // quote found
+            if (cur + 1 < end && cur[1] == q)
+            {
+                cur += 2; // escaped quote
+                continue;
+            }
+
+            cur++; // closing quote
+            return;
+        }
+        // Unterminated: leave cur at end
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ScanBlockComment(ref byte* cur, byte* end)
+    {
+        // cur points after '/*'
+        while (cur < end)
+        {
+            byte prev = *cur++;
+            if (prev == (byte)'*' && cur < end && *cur == (byte)'/')
+            {
+                cur++; // consume '/'
+                return;
+            }
         }
     }
 
