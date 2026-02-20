@@ -6,7 +6,7 @@ namespace Ara3D.Parakeet.Tests;
 
 public static class ExpressTests
 {
-    public static ParserInput GetExpressFileAsParserInput()
+    public static ParserInput GetIfc4ExpressFileAsParserInput()
         => ParserInput.FromFile(InputFolder.RelativeFile("IFC4.exp"));
 
     public static bool BasicTest(string input, Rule rule)
@@ -225,7 +225,7 @@ public static class ExpressTests
     }
 
     public static IEnumerable<string> GetExpressTypes() {
-        var pi = GetExpressFileAsParserInput();
+        var pi = GetIfc4ExpressFileAsParserInput();
         var rule = ExpressGrammar.Instance.TypeBlocks;
         var ps = rule.Parse(pi);
         Assert.IsTrue(ps.AtEnd());
@@ -234,7 +234,7 @@ public static class ExpressTests
 
     public static IEnumerable<string> GetExpressEntities()
     {
-        var pi = GetExpressFileAsParserInput();
+        var pi = GetIfc4ExpressFileAsParserInput();
         var rule = ExpressGrammar.Instance.EntityBlocks;
         var ps = rule.Parse(pi);
         Assert.IsTrue(ps.AtEnd());
