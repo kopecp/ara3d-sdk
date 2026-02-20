@@ -145,15 +145,52 @@ public static unsafe class StepTokenizer
                 while (cur < end && IsIdentLookup[*cur]) cur++;
                 return StepTokenType.Identifier;
 
-            case (byte)'\"':
-                while (cur < end && *cur != (byte)'"') cur++;
-                cur++; // Skip the closing quote
-                return StepTokenType.DoubleQuotedString;
+            case (byte)'"':
+            {
+                byte q = (byte)'"';
+                while (cur < end)
+                {
+                    if (*cur != q) { cur++; continue; }
 
-            case (byte)'\'': 
-                while (cur < end && *cur != (byte)'\'') cur++;
-                cur++; // Skip the closing quote
+                    // *cur is a quote
+                    if (cur + 1 < end && cur[1] == q)
+                    {
+                        // Escaped quote: "" -> consume both and continue
+                        cur += 2;
+                        continue;
+                    }
+
+                    // Closing quote
+                    cur++; // consume terminator
+                    return StepTokenType.DoubleQuotedString;
+                }
+
+                // Unterminated string: decide how you want to handle this (error token, etc.)
+                return StepTokenType.DoubleQuotedString;
+            }
+
+            case (byte)'\'':
+            {
+                byte q = (byte)'\'';
+                while (cur < end)
+                {
+                    if (*cur != q) { cur++; continue; }
+
+                    // *cur is a quote
+                    if (cur + 1 < end && cur[1] == q)
+                    {
+                        // Escaped quote: '' -> consume both and continue
+                        cur += 2;
+                        continue;
+                    }
+
+                    // Closing quote
+                    cur++; // consume terminator
+                    return StepTokenType.SingleQuotedString;
+                }
+
                 return StepTokenType.SingleQuotedString;
+            }
 
             case (byte)'0':
             case (byte)'1':

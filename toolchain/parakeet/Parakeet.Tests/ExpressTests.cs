@@ -9,6 +9,12 @@ public static class ExpressTests
     public static ParserInput GetIfc4ExpressFileAsParserInput()
         => ParserInput.FromFile(InputFolder.RelativeFile("IFC4.exp"));
 
+    public static ParserInput GetIfc2x3ExpressFileAsParserInput()
+        => ParserInput.FromFile(InputFolder.RelativeFile("IFC2x3.exp"));
+
+    public static ParserInput GetIfc4x3ExpressFileAsParserInput()
+        => ParserInput.FromFile(InputFolder.RelativeFile("IFC4x3.exp"));
+
     public static bool BasicTest(string input, Rule rule)
     {
         try
