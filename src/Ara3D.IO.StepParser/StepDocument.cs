@@ -16,6 +16,7 @@ public sealed unsafe class StepDocument : IDisposable
     public readonly IBuffer Data;
     public readonly UnmanagedList<StepDefinition> Definitions = new();
     public readonly StepRawValueData RawValueData;
+    public readonly StepHeader Header;
 
     public StepDocument(FilePath filePath, ILogger logger = null)
         : this(Serializer.ReadAllBytesAligned(filePath), filePath, logger)
@@ -29,36 +30,31 @@ public sealed unsafe class StepDocument : IDisposable
         DataStart = Data.GetPointer();
         DataEnd = DataStart + Data.NumBytes();
 
-        logger.Log($"Starting tokenization");
-
+        logger.Log($"Parsing definition");
         var capacityEstimate = Data.NumBytes() / 32;
         RawValueData = new StepRawValueData((int)capacityEstimate);
         var estNumDefs = capacityEstimate / 8; // Estimate about 8 tokens per definition on average
         Definitions = new UnmanagedList<StepDefinition>((int)estNumDefs);
 
-        // Initialize the token list with a capacity of 16,000 tokens (the longest line we hope to encounter, but could be more)
+        // Initialize the token list with a capacity of the longest line we hope to encounter
         using var tokens = new UnmanagedList<StepToken>(32000);
 
         var cur = DataStart;
 
+        logger.Log($"Parsing header");
+        Header = StepHeader.Parse(ref cur, DataEnd);
+
+        logger.Log($"Parsing definitions");
         while (true)
         {
             tokens.Clear();
             if (!StepTokenizer.AdvanceToAndTokenizeDefinition(ref cur, DataEnd, out var idToken, tokens))
                 break;
 
-            //var id = StepValues.ParseId(idToken);
-            //Debug.Assert(!Definitions.ContainsKey(id), $"Duplicate definition found for ID {id} in {filePath.GetFileName()}");
-            //Debug.Assert(tokens.Count > 2, "Expected at least 3 tokens for a definition identifier begin_group end_group"));
-            //Debug.Assert(tokens[0].Type == StepTokenType.Identifier, "Expected Identifier token at start");
-            //Debug.Assert(tokens[1].Type == StepTokenType.BeginGroup, "Expected BeginGroup token at start + 1");
-            //Debug.Assert(tokens[^1].Type == StepTokenType.EndGroup, "Expected EndOfLine token at end");
-
             var curToken = tokens.Begin();
             var endToken = tokens.End();
             var valueIndex = RawValueData.Values.Count;
             RawValueData.AddTokens(ref curToken, endToken);
-            //Debug.Assert(curToken == endToken, "Did not consume all tokens in definition");
                 
             var definition = new StepDefinition(idToken, valueIndex, cur);
             Definitions.Add(definition);

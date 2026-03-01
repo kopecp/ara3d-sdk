@@ -60,9 +60,7 @@ public class StepValue
     }
 
     public string AsString()
-        => !IsString()
-            ? throw new Exception("Not a string")
-            : RawValueData.AsString(RawValue);
+        => RawValueData.AsString(RawValue);
 
     public override string ToString()
         => RawValueData.ToString(RawValue);

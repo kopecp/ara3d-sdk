@@ -271,7 +271,9 @@ public unsafe class StepRawValueData
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public string AsString(StepRawValue value)
-        => Encoding.ASCII.GetString(AsToken(value).Span);
+        => value.IsRedeclared ? "*" 
+        : value.IsUnassigned ? "$" 
+        : Encoding.ASCII.GetString(AsToken(value).Span);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public string AsTrimmedString(StepRawValue value)
