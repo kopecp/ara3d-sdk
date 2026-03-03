@@ -71,6 +71,7 @@ namespace Ara3D.Memory
         [MethodImpl(AggressiveInlining)]
         public static implicit operator ByteSlice(AlignedMemory memory)
             => memory.Bytes;
+
         /// <summary>
         /// Implicit cast to a ByteSlice.
         /// </summary>

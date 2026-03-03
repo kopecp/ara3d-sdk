@@ -1,10 +1,11 @@
-﻿using Ara3D.Geometry;
+﻿using System.Diagnostics;
+using Ara3D.Geometry;
 
 namespace Ara3D.IO.PLY;
 
 public static class PlyImporter
 {
-    public static PlyBuffer CreateBuffer(string s, int size, string name)
+    public static IPlyBuffer CreateBuffer(string s, int size, string name)
     {
         switch (s.ToLowerInvariant())
         {
@@ -71,11 +72,12 @@ public static class PlyImporter
 
     public static List<IPlyBuffer> LoadBuffers(string fileName)
     {
-        var vertexBuffers = new List<PlyBuffer>();
-        PlyBuffer faceSizeBuffer = null;
-        ListBuffer indexBuffer = null;
-        var faceBuffers = new List<PlyBuffer>();
-        var materialBuffers = new List<PlyBuffer>();
+        var vertexBuffers = new List<IPlyBuffer>();
+        IPlyBuffer faceSizeBuffer = null;
+        IPlyBuffer indexBuffer = null;
+        
+        //var materialBuffers = new List<IPlyBuffer>();
+        
         var fmt = "";
 
         var num_materials = 0;
@@ -95,7 +97,7 @@ public static class PlyImporter
                 if (words.Count == 0)
                     continue;
 
-                switch (words[0])
+                switch (words[0].ToLowerInvariant())
                 {
                     case "ply":
                         break;
@@ -111,15 +113,19 @@ public static class PlyImporter
                             case "vertex":
                                 num_vertices = int.Parse(words[2]);
                                 break;
+
                             case "face":
                                 num_faces = int.Parse(words[2]);
                                 break;
+                            
                             case "tristrips":
                                 num_faces = int.Parse(words[2]);
                                 break;
+                            
                             case "material":
                                 num_materials = int.Parse(words[2]);
                                 break;
+                            
                             default:
                                 throw new Exception($"Bad PLY element: {line}");
                         }
@@ -145,16 +151,12 @@ public static class PlyImporter
                                     throw new Exception("Already found a face size or index buffer");
 
                                 faceSizeBuffer = CreateBuffer(words[2], num_faces, "face_sizes");
-                                indexBuffer =
-                                    new ListBuffer(CreateBuffer(words[3], num_faces, "vertex_indices"));
+                                indexBuffer = CreateBuffer(words[3], 3, "vertex_indices");
                             }
                             else
                             {
                                 if (indexBuffer == null || faceSizeBuffer == null)
-                                    throw new Exception(
-                                        "The vertex_indices should be before other face properties");
-
-                                faceBuffers.Add(CreateBuffer(words[1], num_faces, words[2]));
+                                    throw new Exception("The vertex_indices should be before other face properties");
                             }
                         }
                     }
@@ -163,8 +165,13 @@ public static class PlyImporter
                         done = true;
                         break;
 
+                    case "created":
+                        break;
+
                     default:
-                        throw new Exception($"bad PLY field: {line}");
+                        // NOTE: I have seen likes like Created
+                        Debug.WriteLine($"Unexpected PLY field: {line}");
+                        break;
                 }
             }
 
@@ -200,25 +207,26 @@ public static class PlyImporter
                     for (var i = 0; i != num_faces; ++i)
                     {
                         var line = streamReader.ReadLine();
+                        if (string.IsNullOrWhiteSpace(line))
+                            break;
+
                         if (line == null)
                             throw new Exception("Unexpected end of file");
 
                         var values = SplitStrings(line);
+                        
                         faceSizeBuffer.LoadValue(values[0]);
-                        var cnt = faceSizeBuffer.RecentInt;
-                        if (cnt < 0)
-                            throw new Exception("Could not determine face size");
+                        var cnt = faceSizeBuffer.GetInt(faceSizeBuffer.Count - 1);
 
-                        if (values.Count != cnt + 1)
-                            throw new Exception($"Expected {cnt + 1} values, but foumd {values.Count}");
+                        if (cnt != 3)
+                            throw new Exception(
+                                $"Face sizes other than 3, in this case {cnt}, are not currently supported ");
 
                         for (var j = 0; j != cnt; ++j)
                             indexBuffer.LoadValue(values[j + 1]);
-
-                        if (faceBuffers.Count > 0)
-                            throw new Exception("Face buffers not yet implemented");
                     }
 
+                    /*
                     for (var i = 0; i != num_materials; ++i)
                     {
                         var line = streamReader.ReadLine();
@@ -228,6 +236,7 @@ public static class PlyImporter
                         var values = SplitStrings(line);
                         faceSizeBuffer.LoadValue(values[0]);
 
+                        /*
                         if (values.Count != materialBuffers.Count)
                             throw new Exception(
                                 $"bad PLY vertex line, expected {materialBuffers.Count} properties, but found {values.Count}");
@@ -236,11 +245,12 @@ public static class PlyImporter
                         foreach (var buffer in materialBuffers)
                             buffer.LoadValue(values[index++]);
                     }
+                    */
                 }
             }
             else if (fmt == "binary_little_endian")
             {
-                using (var binaryReader = new System.IO.BinaryReader(file))
+                using (var binaryReader = new BinaryReader(file))
                 {
                     for (var i = 0; i != num_vertices; ++i)
                     {
@@ -251,23 +261,13 @@ public static class PlyImporter
                     for (var i = 0; i != num_faces; ++i)
                     {
                         faceSizeBuffer.LoadValue(binaryReader);
-                        var cnt = faceSizeBuffer.RecentInt;
-                        if (cnt < 0)
-                            throw new Exception("Could not determine face size");
+                        var cnt = faceSizeBuffer.GetInt(faceSizeBuffer.Count - 1);
+                        if (cnt != 3)
+                            throw new Exception("Only face sizes of size 3 are supported");
 
                         for (var j = 0; j != cnt; ++j)
                             indexBuffer.LoadValue(binaryReader);
-
-                        foreach (var faceBuffer in faceBuffers)
-                            faceBuffer.LoadValue(binaryReader);
                     }
-
-                    for (var i = 0; i != num_materials; ++i)
-                    {
-                        foreach (var buffer in materialBuffers)
-                            buffer.LoadValue(binaryReader);
-                    }
-
                 }
             }
             else
@@ -280,8 +280,6 @@ public static class PlyImporter
         allBuffers.AddRange(vertexBuffers);
         allBuffers.Add(faceSizeBuffer);
         allBuffers.Add(indexBuffer);
-        allBuffers.AddRange(faceBuffers);
-        allBuffers.AddRange(materialBuffers);
         return allBuffers;
     }
 

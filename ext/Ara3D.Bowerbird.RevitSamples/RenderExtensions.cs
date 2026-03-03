@@ -94,5 +94,5 @@ public static class RenderExtensions
         => mesh.ToRenderMesh(color.Repeat(mesh.Points.Count));
 
     public static RenderMesh ToRenderMesh(this TriangleMesh3D mesh, IReadOnlyList<Color32> colors = null)
-        => RenderMesh.Create(mesh.Points, mesh.CornerIndices(), null, null, colors);
+        => RenderMesh.Create(mesh.Points, mesh.CornerIndices().Map(i => i.Value), null, null, colors);
 }

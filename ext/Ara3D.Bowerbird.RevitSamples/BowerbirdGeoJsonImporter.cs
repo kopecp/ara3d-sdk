@@ -19,7 +19,7 @@ namespace Ara3D.Bowerbird.RevitSamples
         public string Name => "Import GeoJSON rooms";
 
         public Document Document;
-        public BackgroundUI Background;
+        //public BackgroundUI Background;
 
         public List<RoomData> Rooms = new List<RoomData>();
         public DirectoryPath InputFolder = Path.GetTempPath(); // BowerbirdGeoJsonExporter.OutputFolder;
