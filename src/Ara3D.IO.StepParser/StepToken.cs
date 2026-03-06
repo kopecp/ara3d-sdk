@@ -69,7 +69,7 @@ public readonly unsafe struct StepToken : IEquatable<StepToken>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Equals(StepToken other)
-        => Length == other.Length && MemEquals(Begin, other.Begin, Length);
+        => Begin == other.Begin && End == other.End;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static bool MemEquals(byte* a, byte* b, int len)
@@ -94,11 +94,7 @@ public readonly unsafe struct StepToken : IEquatable<StepToken>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int GetHashCode()
-    {
-        var hc = new HashCode();
-        hc.AddBytes(Span); 
-        return hc.ToHashCode();
-    }
+        => HashCode.Combine(new IntPtr(Begin), new IntPtr(End));
 
     public static bool operator ==(StepToken left, StepToken right) => left.Equals(right);
     public static bool operator !=(StepToken left, StepToken right) => !left.Equals(right);
