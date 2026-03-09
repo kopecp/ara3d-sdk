@@ -413,7 +413,7 @@ public static class ParquetUtils
         }
     }
 
-    public static IBimData ReadBimDataFromParquetZip(this FilePath fp)
+    public static BimData ReadBimDataFromParquetZip(this FilePath fp)
         => Task.Run(() => fp.ReadBimDataFromParquetZipAsync()).GetAwaiter().GetResult();
 
     public static async Task WriteToParquetZipAsync(this IBimData data, FilePath fp)

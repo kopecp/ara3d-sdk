@@ -13,7 +13,7 @@ namespace Ara3D.IO.StepParser
         public Dictionary<int, StepRawValue[]> Attributes = new();
 
         public string GetEntityName(int id)
-            => Data.GetEntityName(Definitions[id]);
+            => Definitions[id].GetName();
 
         public StepGraph(StepDocument doc)
         {
@@ -22,7 +22,7 @@ namespace Ara3D.IO.StepParser
             {
                 var defId = def.Id;
                 Definitions.Add(defId, def);
-                var attrs = Data.GetAttributes(def);
+                var attrs = def.GetAttributes(doc);
                 Attributes.Add(defId, attrs);
             }
 

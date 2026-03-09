@@ -158,41 +158,13 @@ public unsafe class StepRawValueData
         return Tokens.Count - 1;
     }
 
-    //==
-    // StepDefinition data accessor methods 
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public string GetEntityName(StepDefinition def)
-        => GetEntityName(GetEntityValue(def));
+    //== 
+    // Entity tests 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public string GetEntityName(StepRawValue entity)
-        => Tokens[entity.Index].ToString();
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public StepRawValue GetEntityValue(StepDefinition def)
-    {
-        var r = Values[def.ValueIndex];
-        Debug.Assert(r.Kind == StepKind.Entity);
-        return r;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public StepRawValue GetEntityAttributesValue(StepDefinition def)
-    {
-        var r = Values[def.ValueIndex + 1];
-        Debug.Assert(r.Kind == StepKind.List);
-        return r;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public StepRawValue[] GetAttributes(StepDefinition def)
-        => AsArray(GetEntityAttributesValue(def));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public string ToString(StepDefinition def)
-        => $"{GetEntityName(def)}{ToString(GetEntityAttributesValue(def))}";
-
+        => Tokens[entity.Index].ToString();    
+    
     //== 
     // String building methods
 

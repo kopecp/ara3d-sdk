@@ -128,8 +128,8 @@ namespace Ara3D.BimOpenSchema
         // Always accessible data 
         public IBimData Data => Model.Data;
         public Entity Entity => Model.Data.Get(Index);
-        public DocumentModel Document => Model.Documents[(int)Entity.Document];
-        public string DocumentTitle => Document.Title;
+        public DocumentModel Document => Model.Documents.ElementAtOrDefault((int)Entity.Document);
+        public string DocumentTitle => Document?.Title;
         public long LocalId => Entity.LocalId;
         public string GlobalId => Data.Get(Entity.GlobalId);
         public string Category => GetEntityModel(Entity.Category)?.Name;

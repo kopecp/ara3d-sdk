@@ -79,8 +79,19 @@ public static class BosTests
                 WriteIndented = true
             });
 
-        Console.WriteLine(json); logger.Log($"# documents = {bd.Documents.Count}");
+        Console.WriteLine(json); 
+        
+        logger.Log($"# documents = {bd.Documents.Count}");
         logger.Log($"# entities = {bd.Entities.Count}");
+
+        logger.Log($"   # instance entities = {bd.Entities.Count(e => e.Type >= 0)}");
+
+        var numCats = bd.Entities.Select(e => e.Category).Distinct().Count(i => i >= 0);
+        logger.Log($"   # distinct categories = {numCats}");
+
+        var numTypes = bd.Entities.Select(e => e.Type).Distinct().Count(i => i >= 0);
+        logger.Log($"   # distinct types = {numTypes}");
+
         logger.Log($"# diagnostics = {bd.Diagnostics.Count}");
         logger.Log($"# descriptors = {bd.Descriptors.Count}");
         logger.Log($"# points = {bd.Points.Count}");

@@ -31,10 +31,12 @@ public sealed unsafe class StepDocument : IDisposable
         DataEnd = DataStart + Data.NumBytes();
 
         logger.Log($"Parsing definition");
-        var capacityEstimate = Data.NumBytes() / 32;
-        RawValueData = new StepRawValueData((int)capacityEstimate);
-        var estNumDefs = capacityEstimate / 8; // Estimate about 8 tokens per definition on average
-        Definitions = new UnmanagedList<StepDefinition>((int)estNumDefs);
+        // Estimate average token length of 8 bytes
+        var estimateNumTokens = Data.NumBytes() / 8;
+        RawValueData = new StepRawValueData((int)estimateNumTokens);
+        // Estimate about 8 tokens per definition on average
+        var estimateNumDefs = estimateNumTokens / 8; 
+        Definitions = new UnmanagedList<StepDefinition>((int)estimateNumDefs);
 
         // Initialize the token list with a capacity of the longest line we hope to encounter
         using var tokens = new UnmanagedList<StepToken>(32000);
@@ -55,31 +57,17 @@ public sealed unsafe class StepDocument : IDisposable
             var endToken = tokens.End();
             var valueIndex = RawValueData.Values.Count;
             RawValueData.AddTokens(ref curToken, endToken);
-                
-            var definition = new StepDefinition(idToken, valueIndex, cur);
+
+            var entityValue = RawValueData.Values[valueIndex];
+            var entityName = RawValueData.Tokens[entityValue.Index];
+            var entityAttr = RawValueData.Values[valueIndex + 1];
+
+            var definition = new StepDefinition(idToken.AsId(), entityName, entityAttr);
+
             Definitions.Add(definition);
                 
             tokens.Clear();
         }
-
-#if DEBUG
-        foreach (var val in RawValueData.Values)
-        {
-            if (val.IsEntity)
-            {
-                var entityAttributesIndex = val.GetEntityAttributeValueIndex();
-                if (!RawValueData.Values[entityAttributesIndex].IsList)
-                    throw new Exception("ERROR!");
-            }
-        }
-
-        foreach (var def in Definitions)
-        {
-            var tmp = RawValueData.GetEntityValue(def);
-            if (!tmp.IsEntity)
-                throw new Exception($"Expected definition {def.Id} to be an entity");
-        }
-#endif
     }
 
     public static bool Assert(bool condition, string text)
@@ -98,46 +86,4 @@ public sealed unsafe class StepDocument : IDisposable
 
     public static StepDocument Create(FilePath fp) 
         => new(fp);
-
-    public Dictionary<StepToken, StepDefinition> GetDefinitionLookup()
-    {
-        var r = new Dictionary<StepToken, StepDefinition>(Definitions.Count);
-        foreach (var def in Definitions)
-        {
-            r.TryAdd(def.IdToken, def);
-        }
-        return r;
-    }
-
-    public Dictionary<StepToken, string> GetEntityNameLookup()
-    {
-        var r = new Dictionary<StepToken, string>(Definitions.Count);
-        foreach (var def in Definitions)
-        {
-            r.TryAdd(def.IdToken, RawValueData.GetEntityName(def));
-        }
-        return r;
-    }
-
-    public ReadOnlySpan<byte> Epilogue()
-    {
-        if (Definitions.Count == 0)
-            return new(DataStart, (int)(DataEnd - DataStart));
-
-        var def = Definitions[^1];
-        var end = def.End;
-        return new(end, (int)(DataEnd - end));
-    }
-
-    public ReadOnlySpan<byte> BeforeDef(int index)
-    {
-        Debug.Assert(index >= 0);
-        Debug.Assert(index < Definitions.Count);
-        var begin = index == 0 ? DataStart : Definitions[index-1].End;
-        var end = Definitions[index].Begin;
-        return new(begin, (int)(end - begin));
-    }
-
-    public IEnumerable<StepDefinition> GetDefinitions(string name)
-        => Definitions.Where(def => RawValueData.GetEntityName(def) == name);
 }

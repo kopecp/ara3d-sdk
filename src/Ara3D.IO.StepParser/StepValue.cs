@@ -11,33 +11,17 @@ namespace Ara3D.IO.StepParser;
 /// </summary>
 public class StepValue
 {
-    public readonly StepValueResolver Resolver;
+    public readonly StepDocument Document;
     public readonly StepRawValue RawValue;
 
-    public StepValue(StepValueResolver resolver, StepRawValue rawValue)
+    public StepValue(StepDocument document, StepRawValue rawValue)
     {
-        Resolver = resolver;
+        Document = document;
         RawValue = rawValue;
     }
 
     public StepKind GetKind()
         => RawValue.Kind;
-
-    public StepKind GetListElementKind()
-    {
-        if (!IsList())
-            throw new Exception("Not a list kind");
-        var rawVals = RawValueData.AsArray(RawValue);
-        if (rawVals.Length == 0)
-            return StepKind.Unknown;
-        var r = rawVals[0].Kind;
-        foreach (var el in rawVals)
-        {
-            if (el.Kind != r)
-                return StepKind.Unknown;
-        }
-        return r;
-    }
 
     public string GetEntityName()
     {
@@ -56,7 +40,7 @@ public class StepValue
         var attrIndex = RawValue.GetEntityAttributeValueIndex();
         var attr = RawValueData.Values[attrIndex];
         Debug.Assert(attr.IsList);
-        return new StepValue(Resolver, attr);
+        return new StepValue(Document, attr);
     }
 
     public string AsString()
@@ -70,19 +54,10 @@ public class StepValue
 
     public int AsId()
         => RawValueData.AsId(RawValue);
-
-    public StepValue AsRef()
-        => Resolver.Resolve(RawValueData.AsToken(RawValue));
-
-    public IReadOnlyList<double> AsNumberList()
-        => GetElements().Select(x => x.AsNumber()).ToList();
     
-    public IReadOnlyList<int> AsIdList()
+  public IReadOnlyList<int> AsIdList()
         => GetElements().Select(e => e.AsId()).ToList();
-
-    public IReadOnlyList<StepValue> AsRefList()
-        => GetElements().Select(e => e.AsRef()).ToList();
-
+    
     public IEnumerable<StepValue> GetElements()
     {
         if (!IsList())
@@ -92,7 +67,7 @@ public class StepValue
         while (i < rawArray.Length)
         {
             var rawEl = rawArray[i];
-            var el = new StepValue(Resolver, rawEl);
+            var el = new StepValue(Document, rawEl);
             yield return el;
             if (rawEl.IsList)
             {
@@ -137,7 +112,7 @@ public class StepValue
         => IsList() && GetElements().All(x => x.IsId());
 
     public StepRawValueData RawValueData 
-        => Resolver.RawValueData;
+        => Document.RawValueData;
 
     public bool IsMissing()
         => GetKind() == StepKind.Redeclared || GetKind() == StepKind.Unassigned;
