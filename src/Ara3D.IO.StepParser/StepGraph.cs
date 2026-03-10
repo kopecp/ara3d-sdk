@@ -6,7 +6,7 @@ namespace Ara3D.IO.StepParser
 {
     public class StepGraph
     {
-        public StepRawValueData Data;
+        public StepDocument Data;
         public Dictionary<int, StepDefinition> Definitions = new();
         public MultiDictionary<int, int> Relations = new();
         public MultiDictionary<int, int> InverseRelations = new();
@@ -17,13 +17,13 @@ namespace Ara3D.IO.StepParser
 
         public StepGraph(StepDocument doc)
         {
-            Data = doc.RawValueData;
+            Data = doc;
             foreach (var def in doc.Definitions)
             {
                 var defId = def.Id;
                 Definitions.Add(defId, def);
                 var attrs = def.GetAttributes(doc);
-                Attributes.Add(defId, attrs);
+                Attributes.Add(defId, attrs.ToArray());
             }
 
             foreach (var kv in Attributes)

@@ -20,10 +20,7 @@ namespace Ara3D.IO.StepParser
         public string GetName()
             => NameToken.ToString();
 
-        public StepRawValue[] GetAttributes(StepDocument document)
-            => GetAttributes(document.RawValueData);
-
-        public StepRawValue[] GetAttributes(StepRawValueData data)
-            => data.AsArray(AttributesValue);
+        public ReadOnlySpan<StepRawValue> GetAttributes(StepDocument document)
+            => document.AsArray(AttributesValue);
     }
 }

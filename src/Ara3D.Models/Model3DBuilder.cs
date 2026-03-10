@@ -16,12 +16,12 @@ public class Model3DBuilder
     public void AddInstance(int meshIndex, Material material)
         => AddInstance(meshIndex, Matrix4x4.Identity, material);
 
-    public void AddInstance(int meshIndex, Matrix4x4 matrix, Material material)
-        => Instances.Add(new InstanceStruct(-1, matrix, meshIndex, material, 0));
+    public void AddInstance(InstanceStruct inst)
+        => Instances.Add(inst);
 
-    public void AddInstance(int meshIndex, Material material, Matrix4x4 matrix)
-        => AddInstance(meshIndex, matrix, material);
-    
+    public void AddInstance(int meshIndex, Matrix4x4 matrix, Material material, int entityIndex = -1, byte flags = 0)
+        => AddInstance(new InstanceStruct(entityIndex, matrix, meshIndex, material, flags));
+
     public void AddModel(IModel3D model)
     {
         var meshOffset = Meshes.Count;
@@ -30,17 +30,14 @@ public class Model3DBuilder
             Instances.Add(inst.WithMeshIndex(inst.MeshIndex + meshOffset));
     }
 
-    public void AddInstance(TriangleMesh3D mesh, Material material, Matrix4x4 matrix)
-        => AddInstance(AddMesh(mesh), material, matrix);
-
     public void AddInstance(TriangleMesh3D mesh, Material material)
-        => AddInstance(mesh, material, Matrix4x4.Identity);
+        => AddInstance(mesh, Matrix4x4.Identity, material);
 
-    public void AddInstance(TriangleMesh3D mesh, Matrix4x4 matrix)
-        => AddInstance(mesh, Material.Default, matrix);
+    public void AddInstance(TriangleMesh3D mesh, Matrix4x4 matrix, Material material)
+        => AddInstance(mesh, matrix, material);
 
     public void AddInstance(TriangleMesh3D mesh)
-        => AddInstance(mesh, Material.Default, Matrix4x4.Identity);
+        => AddInstance(mesh, Matrix4x4.Identity, Material.Default);
 
     public int AddMesh(TriangleMesh3D mesh)
     {

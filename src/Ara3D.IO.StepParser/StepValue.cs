@@ -1,120 +1,108 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace Ara3D.IO.StepParser;
 
 /// <summary>
-/// This is a high-level class for working with values in a step file.
-/// It is less performant than the StepRawValue struct, but provides a much simpler API. 
+/// This is 64 bits long. The "kind" data is stored in the lower 4 bits of _count.
+/// The _index is into either the value list or the token list of StepValueData
 /// </summary>
-public class StepValue
+public readonly struct StepRawValue
 {
-    public readonly StepDocument Document;
-    public readonly StepRawValue RawValue;
+    /// <summary>
+    /// This is an index into either the token index, or the value
+    /// </summary>
+    private readonly uint _index;
 
-    public StepValue(StepDocument document, StepRawValue rawValue)
+    /// <summary>
+    /// When encoding lists, this is the number of elements in the list.
+    /// When encoding entities, this is the index of the entity attributes (which are a list)
+    /// </summary>
+    private readonly uint _countOrOffset;
+
+    /// <summary>
+    /// Constructs a StepValue with the given kind, index, and count.
+    /// The count must be less than (2^28) to fit into the upper 28 bits of _count.
+    /// </summary>
+    public StepRawValue(StepKind kind, int index, int countOrOffset = 0)
     {
-        Document = document;
-        RawValue = rawValue;
+        _index = (uint)index;
+        Debug.Assert(countOrOffset < (uint.MaxValue >> 4));
+        _countOrOffset = (uint)countOrOffset << 4 | (uint)kind;
     }
 
-    public StepKind GetKind()
-        => RawValue.Kind;
-
-    public string GetEntityName()
+    /// <summary>
+    /// Returns the kind of the value. 
+    /// </summary>
+    public StepKind Kind
     {
-        if (!IsEntity())
-            throw new Exception("Not an entity");
-        return RawValueData.GetEntityName(RawValue);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get  => (StepKind)(_countOrOffset & 0xF);
+    }
+    
+    /// <summary>
+    /// Returns an index into either the value list or the token list. 
+    /// </summary>
+    public int Index
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => (int)_index;
     }
 
-    public IReadOnlyList<StepValue> GetEntityAttributes()
-        => GetEntityAttributesValue().GetElements().ToList();
-
-    public StepValue GetEntityAttributesValue()
+    /// <summary>
+    /// Returns the number of entries in the value list is a StepKind.List,
+    /// or if it is a StepKind.Entity then this is the index where the list
+    /// entity attributes start. 
+    /// </summary>
+    public int Count
     {
-        if (!IsEntity())
-            throw new Exception("Not an entity");
-        var attrIndex = RawValue.GetEntityAttributeValueIndex();
-        var attr = RawValueData.Values[attrIndex];
-        Debug.Assert(attr.IsList);
-        return new StepValue(Document, attr);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => (int)(_countOrOffset >> 4);
     }
 
-    public string AsString()
-        => RawValueData.AsString(RawValue);
+    /// <summary>
+    /// For entities, returns the value index of the entity attributes
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int GetEntityAttributeValueIndex()
+    {
+        Debug.Assert(IsEntity);
+        return Count;
+    }
 
+    /// <summary>
+    /// Returns the number of index into the value list: only use for StepKind.List
+    /// </summary>
     public override string ToString()
-        => RawValueData.ToString(RawValue);
+        => $"{Kind}[{Count}] + {Index}";
 
-    public double AsNumber()
-        => RawValueData.AsNumber(RawValue);
+    //==
+    // Various helpers 
 
-    public int AsId()
-        => RawValueData.AsId(RawValue);
+    public bool IsEntity 
+        => Kind == StepKind.Entity;
     
-  public IReadOnlyList<int> AsIdList()
-        => GetElements().Select(e => e.AsId()).ToList();
+    public bool IsId 
+        => Kind == StepKind.Id;
     
-    public IEnumerable<StepValue> GetElements()
-    {
-        if (!IsList())
-            throw new Exception("Not a list");
-        var rawArray = RawValueData.AsArray(RawValue);
-        var i = 0;
-        while (i < rawArray.Length)
-        {
-            var rawEl = rawArray[i];
-            var el = new StepValue(Document, rawEl);
-            yield return el;
-            if (rawEl.IsList)
-            {
-                i += rawEl.Count + 1;
-            }
-            else if (rawEl.IsEntity)
-            {
-                i += 1;
-                if (i >= rawArray.Length || !rawArray[i].IsList)
-                    throw new Exception("Expected a list to follow an entity");
-                i += rawArray[i].Count + 1;
-            }
-            else
-            {
-                i++;
-            }
-        }
-    }
+    public bool IsList 
+        => Kind == StepKind.List;
 
-    public bool IsNumber()
-        => GetKind() == StepKind.Number;
+    public bool IsUnassignedOrRedeclared
+        => IsUnassigned || IsRedeclared;
 
-    public bool IsList()
-        => GetKind() == StepKind.List;
+    public bool IsUnassigned 
+        => Kind == StepKind.Unassigned;
+    
+    public bool IsRedeclared 
+        => Kind == StepKind.Redeclared;
+    
+    public bool IsString 
+        => Kind == StepKind.String;
+    
+    public bool IsNumber 
+        => Kind == StepKind.Number;
 
-    public bool IsId()
-        => GetKind() == StepKind.Id;
-
-    public bool IsEntity()
-        => GetKind() == StepKind.Entity;
-
-    public bool IsString()
-        => GetKind() == StepKind.String;
-
-    public bool IsSymbol()
-        => GetKind() == StepKind.Symbol;
-
-    public bool IsNumberList()
-        => IsList() && GetElements().All(x => x.IsNumber());
-
-    public bool IsRefList()
-        => IsList() && GetElements().All(x => x.IsId());
-
-    public StepRawValueData RawValueData 
-        => Document.RawValueData;
-
-    public bool IsMissing()
-        => GetKind() == StepKind.Redeclared || GetKind() == StepKind.Unassigned;
-
+    public bool IsSymbol
+        => Kind == StepKind.Symbol;
 }
