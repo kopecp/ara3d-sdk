@@ -1,0 +1,81 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+namespace Ara3D.IO.StepParser;
+
+public static unsafe class StepTokenExtensions
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ReadOnlySpan<StepToken> AsFlatArray(this StepToken token, StepDocument doc)
+    {
+        if (token.IsUnassignedOrRedeclared)
+        {
+            return default;
+        }
+
+        Debug.Assert(token.IsList);
+        // We want to get the index of the first token in the list .
+        var index = token.ValueOrIndex;
+        Debug.Assert(index >= 0);
+        
+        // If the list token was not 
+        Debug.Assert(token.Length >= 0);
+        
+        var ptr = doc.Tokens.Ptr + index;
+
+        // Should be the same token 
+        Debug.Assert(ptr->Equals(token));
+
+        return new ReadOnlySpan<StepToken>(ptr + 1, token.Length);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static IReadOnlyList<StepToken> AsArray(this StepToken token, StepDocument doc)
+    {
+        var input = token.AsFlatArray(doc);
+        var output = new List<StepToken>();
+        var i = 0;
+        while (i < input.Length)
+        {
+            var element = input[i];
+            output.Add(element);
+            if (element.IsList)
+            {
+                i += element.Length + 1;
+            }
+            else if (element.IsEntity)
+            {
+                i += 1;
+                if (i >= input.Length || !input[i].IsList)
+                    throw new Exception("Expected a list to follow an entity");
+                i += input[i].ValueOrIndex + 1;
+            }
+            else
+            {
+                i++;
+            }
+        }
+        return output;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double[] AsNumbers(this StepToken value, StepDocument doc)
+    {
+        var vals = value.AsFlatArray(doc);
+        var r = new double[vals.Length];
+        for (var i = 0; i < vals.Length; ++i)
+            r[i] = vals[i].AsNumber();
+        return r;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int[] AsIds(this StepToken value, StepDocument doc)
+    {
+        var vals = value.AsFlatArray(doc);
+        var r = new int[vals.Length];
+        for (var i = 0; i < vals.Length; ++i)
+            r[i] = vals[i].AsId();
+        return r;
+    }
+}

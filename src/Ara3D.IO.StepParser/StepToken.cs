@@ -1,105 +1,153 @@
-﻿using System;
+﻿using Ara3D.Memory;
+using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Ara3D.Memory;
+using System.Runtime.InteropServices;
 
 namespace Ara3D.IO.StepParser;
 
-public readonly unsafe struct StepToken : IEquatable<StepToken>
+public unsafe struct StepToken 
 {
     public readonly byte* Begin;
-    public readonly byte* End;
+
+    // For most tokens this is the number of bytes, but for a list, this is the number of tokens 
+    public int Length;
+
+    // For lists this is the index of list in the token list.
+    // The following tokens are the ones in 
+    public int ValueOrIndex; 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public StepToken(byte* begin, byte* end)
+    public StepToken(byte* begin, byte* end, int valueOrIndex = 0)
+        : this(begin, (int)(end - begin), valueOrIndex)
+    { }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public StepToken(byte* begin, int length, int valueOrIndex = 0)
     {
         Begin = begin;
-        End = end;
+        Length = length;
+        ValueOrIndex = valueOrIndex;
+        Debug.Assert(sizeof(StepToken) == 16);
+        Debug.Assert(Marshal.SizeOf<StepToken>() == 16);
     }
 
-    public StepTokenType Type
+    public readonly byte* End
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Begin + Length;
+    }
+
+    public readonly byte Last
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Begin[Length-1];
+    }
+
+    public readonly StepTokenType Type
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => StepTokenizer.TokenLookup[*Begin];
     }
 
-    public ByteSlice Slice 
+    public readonly ByteSlice Slice 
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => new (Begin, End);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override string ToString()
-        => Slice.ToAsciiString();
-
-    public ReadOnlySpan<byte> Span
+    public readonly ReadOnlySpan<byte> Span
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => new(Begin, (int)(End - Begin));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double AsNumber()
+    public readonly override string ToString()
+        => Slice.ToAsciiString();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly double AsNumber()
         => double.Parse(Span);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int AsId()
+    public readonly int AsId()
+        => ParseId();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly int ParseId()
         => int.Parse(Span.Slice(1));
 
-    /// <summary>
-    /// Reads 16 consecutive bytes from <paramref name="p"/> into a <see cref="UInt128"/>
-    /// and zeroes every byte from index <paramref name="n"/> (inclusive) up to byte 15.
-    /// <para>Thus <c>n==0</c> ⇒ return 0, <c>n==16</c> ⇒ keep all 16 bytes.</para>
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static UInt128 ReadU128(byte* p, int n)
-    {
-        var value = Unsafe.ReadUnaligned<UInt128>(p);
-        var mask = n == 16
-            ? UInt128.MaxValue                   // avoid shift by 128
-            : ((UInt128)1 << (n * 8)) - 1;
-        return value & mask;
-    }
-
-    public int Length
+    public bool IsEntity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => (int)(End - Begin);
+        get => Type == StepTokenType.Identifier; 
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Equals(StepToken other)
-        => Length == other.Length && MemEquals(Begin, other.Begin, Length);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static bool MemEquals(byte* a, byte* b, int len)
+    public readonly bool IsId
     {
-        // Compare 8, then 4, then tail bytes (unaligned OK)
-        int i = 0;
-        for (; i + 8 <= len; i += 8)
-            if (Unsafe.ReadUnaligned<ulong>(a + i) != Unsafe.ReadUnaligned<ulong>(b + i)) return false;
-        if ((len - i) >= 4)
-        {
-            if (Unsafe.ReadUnaligned<uint>(a + i) != Unsafe.ReadUnaligned<uint>(b + i)) return false;
-            i += 4;
-        }
-        for (; i < len; i++)
-            if (a[i] != b[i]) return false;
-        return true;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => *Begin == (byte)'#';
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override bool Equals(object? obj)
-        => obj is StepToken other && Equals(other);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override int GetHashCode()
+    public readonly bool IsList
     {
-        var hc = new HashCode();
-        hc.AddBytes(Span); 
-        return hc.ToHashCode();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => *Begin == (byte)'(';
     }
 
-    public static bool operator ==(StepToken left, StepToken right) => left.Equals(right);
-    public static bool operator !=(StepToken left, StepToken right) => !left.Equals(right);
+    public readonly bool IsUnassignedOrRedeclared
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => IsUnassigned || IsRedeclared;
+    }
+
+    public readonly bool IsUnassigned
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => *Begin == (byte)'$';
+    }
+
+    public readonly bool IsRedeclared
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => *Begin == (byte)'*';
+    }
+
+    public readonly bool IsString
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => *Begin == (byte)'\'' || *Begin == (byte)'"';
+    }
+
+    public readonly bool IsNumber
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Type == StepTokenType.Number;
+    }
+
+    public readonly bool IsSymbol
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => *Begin == '.';
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly bool Equals(StepToken other)
+        => Begin == other.Begin && Length == other.Length && ValueOrIndex == other.ValueOrIndex;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static StepToken CreateListToken(byte* ptr, int index)
+    {
+        Debug.Assert(*ptr == '(');
+        Debug.Assert(index >= 0);
+        var r = new StepToken(ptr, -1, index);
+        Debug.Assert(r.IsList);
+        return r;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly bool Match(ReadOnlySpan<byte> bytes)
+        => bytes.SequenceEqual(Span);
+
 }

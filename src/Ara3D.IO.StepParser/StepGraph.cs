@@ -4,13 +4,15 @@ using Ara3D.Utils;
 
 namespace Ara3D.IO.StepParser
 {
+    // TODO: delete
+    /*
     public class StepGraph
     {
         public StepDocument Data;
         public Dictionary<int, StepDefinition> Definitions = new();
         public MultiDictionary<int, int> Relations = new();
         public MultiDictionary<int, int> InverseRelations = new();
-        public Dictionary<int, StepRawValue[]> Attributes = new();
+        public Dictionary<int, StepToken[]> Attributes = new();
 
         public string GetEntityName(int id)
             => Definitions[id].GetName();
@@ -41,4 +43,5 @@ namespace Ara3D.IO.StepParser
             }
         }
     }
+    */
 }

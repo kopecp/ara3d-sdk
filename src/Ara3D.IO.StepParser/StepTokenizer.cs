@@ -5,6 +5,9 @@ using Ara3D.Memory;
 
 namespace Ara3D.IO.StepParser;
 
+/// <summary>
+/// Technically this is more a parser because it is recursive. 
+/// </summary>
 public static unsafe class StepTokenizer
 {
     public static readonly StepTokenType[] TokenLookup =
@@ -38,11 +41,9 @@ public static unsafe class StepTokenizer
                 return true;
 
             case StepTokenType.BeginGroup:
-            case StepTokenType.EndGroup:
-            case StepTokenType.EndOfLine:
             case StepTokenType.Definition:
-                return true;
-
+            case StepTokenType.EndGroup:
+            case StepTokenType.Semicolon:
             case StepTokenType.None:
             case StepTokenType.Whitespace:
             case StepTokenType.Separator:
@@ -71,7 +72,7 @@ public static unsafe class StepTokenizer
                 return StepTokenType.Definition;
                 
             case (byte)';':
-                return StepTokenType.EndOfLine;
+                return StepTokenType.Semicolon;
 
             case (byte)'$':
                 return StepTokenType.Unassigned;
@@ -245,6 +246,27 @@ public static unsafe class StepTokenizer
         return r == type;
     }
 
+    public static bool AdvanceToData(ref byte* cur, byte* end)
+    {
+        while (cur < end)
+        {
+            var begin = cur;
+            var r = ParseToken(ref cur, end);
+            if (r == StepTokenType.Identifier)
+            {
+                var span = new ReadOnlySpan<byte>(begin, (int)(cur - begin));
+                if (span.SequenceEqual("DATA"u8))
+                {
+                    Debug.Assert(*cur == ';');
+                    cur++;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool AdvanceTo(ref byte* cur, byte* end, out StepToken token, StepTokenType type)
     {
@@ -257,43 +279,108 @@ public static unsafe class StepTokenizer
                 token = new StepToken(begin, cur);
                 return true;
             }
+
+            if (r != StepTokenType.None
+                && r != StepTokenType.Comment
+                && r != StepTokenType.Whitespace
+                && r != StepTokenType.Unknown)
+            {
+                break;
+            }
         }
         token = default;
         return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool AdvanceToDefinition(ref byte* cur, byte* end, out StepToken id)
+    public static void ParseList(ref byte* cur, byte* end, UnmanagedList<StepToken> tokens)
     {
-        id = default;
+        var startTokenIndex = tokens.Count;
+        var begin = cur - 1;
+
+        Debug.Assert(*begin == '(');
+        var token = StepToken.CreateListToken(begin, startTokenIndex);
+        tokens.Add(token);
+
+        Debug.Assert(tokens.Count == startTokenIndex + 1);
+
         while (cur < end)
         {
-            if (!AdvanceTo(ref cur, end, out id, StepTokenType.Id))
-                return false;
-            if (AdvancePast(ref cur, end, StepTokenType.Definition))
-                return true;
+            var prev = cur;
+            var type = ParseToken(ref cur, end);
+
+            if (type == StepTokenType.EndGroup)
+            {
+                // This is the raw number of tokens (it includes nested lists)
+                var numTokensInList = tokens.Count - startTokenIndex - 1;
+                Debug.Assert(numTokensInList >= 0);
+                
+                // Patch the list token with correct number of tokens
+                tokens[startTokenIndex].Length = numTokensInList;
+
+                Debug.Assert(tokens[startTokenIndex].Length >= 0);
+
+                return;
+            }
+
+            if (type == StepTokenType.BeginGroup)
+                ParseList(ref cur, end, tokens);
+
+            if (type == StepTokenType.Semicolon)
+                throw new Exception("Unexpected end of definition");
+
+            if (ShouldStoreType(type))
+                tokens.Add(new StepToken(prev, cur));
         }
-        return false;
+
+        throw new Exception("Missing end of list");
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool AdvanceToAndTokenizeDefinition(ref byte* cur, byte* end, out StepToken id, UnmanagedList<StepToken> tokens)
+    public static bool AdvanceToAndTokenizeDefinition(ref byte* cur, byte* end, out int id, out StepToken nameToken, out StepToken attrToken, UnmanagedList<StepToken> tokens)
     {
-        Debug.Assert(tokens.Count == 0);
+        id = 0;
+        nameToken = default;
+        attrToken = default;
 
-        if (!AdvanceToDefinition(ref cur, end, out id))
-            return false;
-            
-        while (cur < end)
+        if (!AdvanceTo(ref cur, end, out var idToken, StepTokenType.Id))
         {
-            var begin = cur;
-            var type = ParseToken(ref cur, end);
-            if (type == StepTokenType.EndOfLine)
-                return true;
-            if (ShouldStoreType(type))
-                tokens.Add(new StepToken(begin, cur));
+            if (idToken.Match("ENDSEC"u8))
+            {
+                throw new Exception($"Expected `ENDSEC` but was {idToken}");
+            }
+            return false;
         }
 
-        return false;
+
+        id = idToken.AsId();
+
+        if (!AdvancePast(ref cur, end, StepTokenType.Definition))
+        {
+            return false;
+        }
+
+        AdvanceTo(ref cur, end, out nameToken, StepTokenType.Identifier);
+
+        var n = tokens.Count;
+
+        var type = ParseToken(ref cur, end);
+        if (type != StepTokenType.BeginGroup)
+            throw new Exception("Expected the beginning of a group");
+                
+        ParseList(ref cur, end, tokens);
+
+        if (!AdvancePast(ref cur, end, StepTokenType.Semicolon))
+        {
+            throw new Exception("Expected a semicolon");
+        }
+
+        cur++;
+
+        attrToken = tokens[n];
+        Debug.Assert(attrToken.IsList);
+        Debug.Assert(attrToken.Length >= 0);
+
+        return true;
     }
 }

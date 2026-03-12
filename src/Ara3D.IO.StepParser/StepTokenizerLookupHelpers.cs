@@ -42,7 +42,7 @@ public static class StepTokenizerLookupHelpers
                 return StepTokenType.Id;
 
             case (byte)';':
-                return StepTokenType.EndOfLine;
+                return StepTokenType.Semicolon;
 
             case (byte)'(':
                 return StepTokenType.BeginGroup;

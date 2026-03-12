@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Ara3D.IO.StepParser
@@ -7,20 +9,14 @@ namespace Ara3D.IO.StepParser
     {
         public readonly int Id;
         public readonly StepToken NameToken;
-        public readonly StepRawValue AttributesValue;
+        public readonly StepToken AttributesToken;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StepDefinition(int id, StepToken name, StepRawValue attributesValue)
+        public StepDefinition(int id, StepToken nameToken, StepToken attrToken)
         {
             Id = id;
-            NameToken = name;
-            AttributesValue = attributesValue;
+            NameToken = nameToken;
+            AttributesToken = attrToken;
         }
-
-        public string GetName()
-            => NameToken.ToString();
-
-        public ReadOnlySpan<StepRawValue> GetAttributes(StepDocument document)
-            => document.AsArray(AttributesValue);
     }
 }

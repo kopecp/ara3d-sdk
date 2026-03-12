@@ -17,7 +17,7 @@
         Unknown,
         BeginGroup,
         EndGroup,
-        EndOfLine,
+        Semicolon,
         Definition,
     }
-}
+}   
