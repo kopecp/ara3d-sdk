@@ -10,4 +10,4 @@ public static class AssetExtensions
         r.Update(model);
         return r;
     }
-}
+}   
