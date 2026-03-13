@@ -17,6 +17,8 @@ public class SetMaterial : IModifier
         => input.WithMaterial(Material);
 }
 
+
+
 public class SetRenderSettings : IModifier
 {
     public bool Wireframe { get; set; }

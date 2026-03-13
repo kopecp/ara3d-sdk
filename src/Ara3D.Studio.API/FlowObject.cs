@@ -49,6 +49,7 @@ public sealed class FlowObject : ITransformable3D<FlowObject>
     public bool IsNull => Value == null;
     public RenderSettings? RenderSettings { get; }
     public Material Material { get; }
+    public bool OverrideMaterial { get; }
 
     // Attachments are workflow specific
     public IReadOnlyList<object> Attachments { get; }
@@ -56,30 +57,31 @@ public sealed class FlowObject : ITransformable3D<FlowObject>
     // NOTE: selection, UVs, Normals, VertexColors, and more are stored as attributes. 
     public IReadOnlyList<FlowAttribute> Attributes { get; }
 
-    public FlowObject(object? value, RenderSettings? renderSettings, Material material, IReadOnlyList<FlowAttribute> attributes, IReadOnlyList<object> attachments)
+    public FlowObject(object? value, RenderSettings? renderSettings, Material material, bool overrideMaterial, IReadOnlyList<FlowAttribute> attributes, IReadOnlyList<object> attachments)
     {
         Type = value?.GetType();
         Value = value;
         RenderSettings = renderSettings;
         Attributes = attributes ?? [];
         Material = material;
+        OverrideMaterial = overrideMaterial;
         Attachments = attachments ?? [];
     }
 
     public FlowObject WithNewValue(object value)
-        => new(value, RenderSettings, Material, Attributes, Attachments);
+        => new(value, RenderSettings, Material, OverrideMaterial, Attributes, Attachments);
 
     public FlowObject WithNewRenderSettings(RenderSettings renderSettings)
-        => new(Value, renderSettings, Material, Attributes, Attachments);
+        => new(Value, renderSettings, Material, OverrideMaterial, Attributes, Attachments);
 
     public FlowObject WithNewAttributes(IReadOnlyList<FlowAttribute> attributes)
-        => new(Value, RenderSettings, Material, attributes, Attachments);
+        => new(Value, RenderSettings, Material, OverrideMaterial, attributes, Attachments);
 
     public FlowObject WithMaterial(Material material)
-        => new(Value, RenderSettings, material, Attributes, Attachments);
+        => new(Value, RenderSettings, material, true, Attributes, Attachments);
 
     public FlowObject WithNewAttachments(IReadOnlyList<object> attachments)
-        => new(Value, RenderSettings, Material, Attributes, attachments);
+        => new(Value, RenderSettings, Material, OverrideMaterial, Attributes, attachments);
 
     public bool HasObject
         => Value != null;
