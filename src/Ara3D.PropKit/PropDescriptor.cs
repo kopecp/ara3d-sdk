@@ -2,32 +2,49 @@
 
 namespace Ara3D.PropKit;
 
-public record PropDescriptor
+/// <summary>
+/// Describe characteristic of a run-time modifiable property.
+/// Contains a type, description, name, and more.
+/// Replaces the System.Component.PropertyDescriptor.
+/// </summary>
+public abstract class PropDescriptor
 {
-    public Type Type { get; init; }
-    public string Name { get; init; }
-    public bool IsReadOnly { get; init; }
-    public string DisplayName { get; init; }
-    public string Description { get; init; }
-    public IReadOnlyList<Attribute> Attributes { get; init; }
+    public string Name { get; }
+    public string DisplayName { get; }
+    public IReadOnlyDictionary<string, string> Tags { get; }
+    public Type Type { get; }
+    public string Description { get; }
+    public string Units { get; }
+    public bool IsReadOnly { get; }
 
-    public PropDescriptor(Type type, string name, bool isReadOnly,
-        string displayName = null, string description = null, IReadOnlyList<Attribute> attributes = null)
+    protected PropDescriptor(Type type, string name = null, string displayName = null, string description = null, string units = null,
+        bool isReadOnly = false, Dictionary<string, string> tags = null)
     {
-        Type = type ?? throw new ArgumentNullException(nameof(type));
-        Name = string.IsNullOrWhiteSpace(name) ? throw new ArgumentException("Name required") : name;
-        IsReadOnly = isReadOnly;
+        Name = name ?? type.Name;
         DisplayName = displayName ?? name.SplitCamelCase();
+        Type = type;
         Description = description ?? "";
-        Attributes = attributes ?? [];
+        Units = units ?? "";
+        IsReadOnly = isReadOnly;
+        Tags = tags ?? [];
     }
 
-    public bool CanSupportNull 
-        => !Type.IsValueType;
+    public abstract object Update(object value, PropUpdateType propUpdate);
+    public abstract bool IsValid(object value);
+    public abstract object Validate(object value);
+    public abstract bool IsValidString(string value);
+    public abstract bool AreEqual(object value1, object value2);
+    public abstract object FromString(string value);
+    public abstract string ToString(object value);
 
-    public bool HasValidType(object o)
-    {
-        if (o == null) return CanSupportNull;
-        return o.GetType() == Type;
-    }
+    public object Default => Update(default, PropUpdateType.Default);
+    public object Min => Update(default, PropUpdateType.Min);
+    public object Max => Update(default, PropUpdateType.Max);
+    
+    public override string ToString()
+        => $"{Name}[\"{DisplayName}\"]";
+
+    public PropValue DefaultPropValue => new(Default, this);
+    public PropValue MinPropValue => new(Min, this);
+    public PropValue MaxPropValue => new(Max, this);
 }

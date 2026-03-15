@@ -6,22 +6,16 @@
 public class PropValue
 {
     public object Value { get; }
-    public Prop Prop { get; }
-    public PropDescriptor Descriptor => Prop.Descriptor;
-    public IPropAccessor Accessor => Prop.Accessor;
-    public IPropValidator Validator => Prop.Validator;
+    public PropDescriptor Descriptor { get; }
 
-    public PropValue(object value, Prop prop)
+    public PropValue(object value, PropDescriptor desc)
     {
-        if (!prop.Descriptor.HasValidType(value))
-            throw new Exception(
-                $"Type of {value} is {value?.GetType()} which is not compatible with {Descriptor.GetType()}");
-        Prop = prop;
-        Value = Validator?.Coerce(value) ?? value;
+        Value = desc.Validate(value);
+        Descriptor = desc;
     }
 
-    public PropValue(Prop prop)
-        : this(prop.Constraints.Default, prop)
+    public PropValue(PropDescriptor desc)
+        : this(desc.Default, desc)
     { }
 
     public bool Equals(PropValue value)
@@ -34,7 +28,7 @@ public class PropValue
         => Descriptor.Equals(other.Descriptor);
 
     public PropValue WithNewValue(object value)
-        => new PropValue(value, Prop);
+        => new PropValue(value, Descriptor);
 
     public string Name => Descriptor.Name;
 }
