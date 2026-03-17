@@ -34,7 +34,7 @@ public class Model3DBuilder
         => AddInstance(mesh, Matrix4x4.Identity, material);
 
     public void AddInstance(TriangleMesh3D mesh, Matrix4x4 matrix, Material material)
-        => AddInstance(mesh, matrix, material);
+        => AddInstance(AddMesh(mesh), matrix, material);
 
     public void AddInstance(TriangleMesh3D mesh)
         => AddInstance(mesh, Matrix4x4.Identity, Material.Default);

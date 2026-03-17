@@ -1,6 +1,8 @@
 ﻿using Ara3D.Bowerbird.RevitSamples;
 using Ara3D.Logging;
+using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
+using System;
 using System.Reflection;
 using System.Windows.Media.Imaging;
 
@@ -9,7 +11,6 @@ namespace Ara3D.BIMOpenSchema.Revit2025
     public class OpenSchemaApp : IExternalApplication
     {
         public static OpenSchemaApp Instance { get; private set; }
-        public RevitContext RevitContext { get; private set; }
         public UIControlledApplication UicApp { get; private set; }
         public UIApplication UiApp { get; private set; }
         public CommandExecutor CommandExecutor { get; set; }
@@ -42,16 +43,20 @@ namespace Ara3D.BIMOpenSchema.Revit2025
 
         public Result OnStartup(UIControlledApplication application)
         {
+            RevitWorkQueue.Init();
+
             UicApp = application;
             Instance = this;
             
             var logger = new Logger(LogWriter.DebugWriter, "BIMOpenSchema");
             CommandExecutor = new CommandExecutor(logger);
-            RevitContext = new RevitContext(logger);
             
             // Store a reference to the UIApplication
             application.Idling += (sender, _) => { UiApp ??= sender as UIApplication; };
-
+                
+            // Register for document - opened notifications
+            application.ControlledApplication.DocumentOpened += ControlledApplicationOnDocumentOpened;
+            
             var rvtRibbonPanel = GetOrCreateRibbonPanel("Ara 3D");
             var pushButtonData = new PushButtonData("BimOpenSchema", "BIM Open Schema\nParquet Exporter", 
                 Assembly.GetExecutingAssembly().Location,
@@ -62,8 +67,21 @@ namespace Ara3D.BIMOpenSchema.Revit2025
             runButton.LargeImage = GetImage();
             runButton.ToolTip = "Export a zip archive of parquet files with extension .BOS.";
 
-            return Result.Succeeded;
-        } 
+            return Result.Succeeded;    
+        }
+
+        private void ControlledApplicationOnDocumentOpened(object sender, DocumentOpenedEventArgs e)
+        {
+            var autoExport = Environment.GetEnvironmentVariable("ARA3D_BOS_AUTO_EXPORT");
+
+            if (autoExport == "TRUE")
+            {
+                var form = new BIMOpenSchemaExporterForm();
+                form.Show();
+                form.DoExport();
+                UiApp.PostCommand(RevitCommandId.LookupPostableCommandId(PostableCommand.ExitRevit));
+            }
+        }
 
         public void Run(UIApplication application)
         {

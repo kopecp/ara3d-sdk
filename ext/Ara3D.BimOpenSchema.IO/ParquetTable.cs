@@ -1,10 +1,13 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Ara3D.Collections;
 using Ara3D.DataTable;
 using DataColumn = Parquet.Data.DataColumn;
 
-namespace Ara3D.Extras;
+namespace Ara3D.BimOpenSchema.IO;
 
 public class ParquetTable<T> : IReadOnlyList<T>, IDataTable
 {

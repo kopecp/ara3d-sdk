@@ -1,4 +1,9 @@
-﻿using System.IO.Compression;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Threading.Tasks;
 using Ara3D.Utils;
 using Parquet;
 using Parquet.Data;

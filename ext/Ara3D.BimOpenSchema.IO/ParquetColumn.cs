@@ -1,8 +1,10 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using Ara3D.DataTable;
 using DataColumn = Parquet.Data.DataColumn;
 
-namespace Ara3D.Extras;
+namespace Ara3D.BimOpenSchema.IO;
 
 /// <summary>
 /// Wraps a Parquet Data Column so that it is typesafe, and implements

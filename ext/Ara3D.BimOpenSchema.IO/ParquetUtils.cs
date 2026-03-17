@@ -1,14 +1,21 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Ara3D.BimOpenSchema;
 using Ara3D.DataTable;
+using Ara3D.Extras;
 using Ara3D.Logging;
 using Ara3D.Utils;
 using Parquet;
 using Parquet.Schema;
 using DataColumn = Parquet.Data.DataColumn;
 
-namespace Ara3D.Extras;
+namespace Ara3D.BimOpenSchema.IO;
 
 public static class ParquetUtils
 {

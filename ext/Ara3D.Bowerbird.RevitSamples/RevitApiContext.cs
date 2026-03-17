@@ -44,7 +44,4 @@ public static class RevitApiContext
         var eeh = new ExternalEventHandler(action, name);
         return ExternalEvent.Create(eeh);
     }
-
-    public static void DoWork(Action<UIApplication> action, string name = "")
-        => CreateEvent(action, name).Raise();
 }

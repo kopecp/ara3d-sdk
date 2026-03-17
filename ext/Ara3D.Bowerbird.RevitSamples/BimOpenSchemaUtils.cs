@@ -2,8 +2,8 @@
 using System.IO;
 using System.IO.Compression;
 using Ara3D.BimOpenSchema;
+using Ara3D.BimOpenSchema.IO;
 using Ara3D.Collections;
-using Ara3D.Extras;
 using Ara3D.Logging;
 using Autodesk.Revit.DB;
 using Parquet;

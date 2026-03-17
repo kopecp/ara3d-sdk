@@ -2,6 +2,8 @@
 
 namespace Ara3D.PropKit;
 
+// TODO: delete, I think.
+/*
 /// <summary>
 /// A class that combines a property descriptor with functions for retrieving or values.
 /// </summary>
@@ -40,3 +42,4 @@ public class PropAccessor<TTarget, TValue> : IPropAccessor
         }
     }
 }
+*/

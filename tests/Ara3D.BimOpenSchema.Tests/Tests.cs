@@ -5,7 +5,6 @@ using Ara3D.BimOpenSchema;
 using Ara3D.BimOpenSchema.IO;
 using Ara3D.BimOpenSchema.Tests;
 using Ara3D.DataTable;
-using Ara3D.Extras;
 
 namespace Ara3D.BIMOpenSchema.Tests
 {

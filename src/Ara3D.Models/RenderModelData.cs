@@ -87,6 +87,7 @@ public class RenderModelData : IDisposable
         IndexBuffer.CopyFrom(indexBuffer);
         MeshBuffer.CopyFrom(meshSlices);
         InstanceBuffer.CopyFrom(instances);
+        RecomputeTotalBounds();
     }
 
     public void UpdateVertexBuffer(IBuffer<float> vertexBuffer) => VertexBuffer.CopyFrom(vertexBuffer);
@@ -112,6 +113,8 @@ public class RenderModelData : IDisposable
         InstanceBounds.Clear();
         InstanceBounds.AddRange(data.InstanceBounds);
         TotalBounds = data.TotalBounds;
+        TotalVertexCount = data.TotalVertexCount;
+        TotalFaceCount = data.TotalFaceCount;
     }
 
     public void Update(IModel3D model)
@@ -281,18 +284,20 @@ public class RenderModelData : IDisposable
 
     public void RecomputeInstanceBounds()
     {
+        TotalFaceCount = 0;
+        TotalVertexCount = 0;
         InstanceBounds.Clear();
         foreach (var inst in InstanceBuffer)
         {
             if (inst.MeshIndex < 0 && inst.IsVisible)
-            {
-                InstanceBounds.Add(Bounds3D.Empty);
-            }
-            else
-            {
-                var meshBounds = MeshBounds[inst.MeshIndex];
-                InstanceBounds.Add(meshBounds.FastTransform(inst.Matrix4x4));
-            }
+                continue;
+
+            var mesh = MeshBuffer[inst.MeshIndex];
+            var meshBounds = MeshBounds[inst.MeshIndex];
+            var transformed = meshBounds.FastTransform(inst.Matrix4x4);
+            InstanceBounds.Add(transformed);
+            TotalVertexCount += mesh.VertexCount;
+            TotalFaceCount += mesh.IndexCount / PrimitiveSize;
         }
     }
 

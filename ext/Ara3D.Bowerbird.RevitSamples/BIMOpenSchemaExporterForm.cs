@@ -125,6 +125,11 @@ namespace Ara3D.BIMOpenSchema.Revit2025
 
         private void buttonExport_Click(object sender, EventArgs e)
         {
+            DoExport();
+        }
+
+        public bool DoExport()
+        {
             richTextBox1.Clear();
             
             var settings = GetExportSettingsFromControls();
@@ -135,7 +140,7 @@ namespace Ara3D.BIMOpenSchema.Revit2025
                 if (!Directory.Exists(folder))
                 {
                     MessageBox.Show($"The folder {folder} does not exist. Please choose a valid folder.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
+                    return false;
                 }
 
                 folder.TestWrite();
@@ -143,7 +148,7 @@ namespace Ara3D.BIMOpenSchema.Revit2025
             catch (Exception ex)
             {
                 MessageBox.Show($"The folder {folder} was not writeable. Error {ex.Message}. Please choose a different folder.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                return false;
             }
 
             try
@@ -151,19 +156,23 @@ namespace Ara3D.BIMOpenSchema.Revit2025
                 if (CurrentDocument == null)
                 {
                     MessageBox.Show("No active document found. Please open a Revit document and try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
+                    return false;
                 }
 
                 var logWriter = LogWriter.Create(Log);
                 var logger = new Logger(logWriter, "BOS Exporter");
 
-                RevitApiContext.DoWork(uiApp => _ = new BimOpenSchemaExporter(uiApp, CurrentDocument, settings, logger, false));
+                RevitWorkQueue.QueueWork(uiApp => 
+                    _ = new BimOpenSchemaExporter(uiApp, CurrentDocument, settings, logger, false));
             }
             catch (Exception ex)
             {
                 Log(ex.Message);
                 MessageBox.Show($"An error occurred during export: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
+
+            return true;
         }
 
         private void buttonLaunchAra3D_Click(object sender, EventArgs e)

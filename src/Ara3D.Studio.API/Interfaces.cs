@@ -83,3 +83,13 @@ public interface IScriptedCommand : IScriptedComponent
     void Execute(IHostApplication app);
     bool CanExecute(IHostApplication app);
 }
+
+/// <summary>
+/// An executable command, designed for specific models.    
+/// </summary>
+public interface IModelCommand : IScriptedCommand
+{
+    string Name { get; }
+    void Execute(FlowObject fo);
+    bool CanExecute(FlowObject fo);
+}

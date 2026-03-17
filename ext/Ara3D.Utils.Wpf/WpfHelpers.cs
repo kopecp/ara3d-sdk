@@ -84,7 +84,8 @@ namespace Ara3D.Utils.Wpf
             return r;
         }
 
-        public static MenuItem AddMenuItem(this ItemCollection self, string text, Action action = null)
+
+        public static MenuItem Add(this ItemCollection self, string text, Action action = null)
         {
             var r = new MenuItem()
             {
@@ -111,14 +112,35 @@ namespace Ara3D.Utils.Wpf
         public static MenuItem? FindMenuItem(this ItemCollection items, string text)
             => items.OfType<MenuItem>().FirstOrDefault(x => FindMenuItem(x, text) != null);
 
-        public static MenuItem AddMenuItem(this MenuItem menu, string text, Action action = null)
-            => menu.Items.AddMenuItem(text, action);
+        public static MenuItem ToMenuItem(this RelayCommand command)
+            => new()  { Header = command.Name, Command = command };
 
-        public static MenuItem AddMenuItem(this Menu menu, string text, Action action = null)
-            => menu.Items.AddMenuItem(text, action);
+        public static MenuItem Add(this MenuItem menu, MenuItem child)
+        {
+            menu.Items.Add(child);
+            return child;
+        }
 
-        public static MenuItem AddMenuItem(this ContextMenu menu, string text, Action action = null)
-            => menu.Items.AddMenuItem(text, action);
+        public static MenuItem Add(this Menu menu, MenuItem child)
+        {
+            menu.Items.Add(child);
+            return child;
+        }
+
+        public static void AddSeparator(this MenuItem menu)
+            => menu.Items.Add(new Separator());
+
+        public static MenuItem Add(this MenuItem menu, RelayCommand command)
+            => menu.Add(command.ToMenuItem());
+
+        public static MenuItem Add(this MenuItem menu, string text, Action action = null)
+            => menu.Items.Add(text, action);
+
+        public static MenuItem Add(this Menu menu, string text, Action action = null)
+            => menu.Items.Add(text, action);
+
+        public static MenuItem Add(this ContextMenu menu, string text, Action action = null)
+            => menu.Items.Add(text, action);
 
         public static int GetItemIndex(this ListBox self, object value)
             => self.ItemContainerGenerator.IndexFromContainer(self.ItemContainerGenerator.ContainerFromItem(value));

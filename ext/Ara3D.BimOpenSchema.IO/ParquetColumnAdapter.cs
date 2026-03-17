@@ -1,7 +1,8 @@
-﻿using Ara3D.DataTable;
+﻿using System;
+using Ara3D.DataTable;
 using DataColumn = Parquet.Data.DataColumn;
 
-namespace Ara3D.Extras;
+namespace Ara3D.BimOpenSchema.IO;
 
 public class ParquetColumnAdapter : IDataColumn
 {
